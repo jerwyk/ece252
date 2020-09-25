@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdlib.h>
 #include "../com/png.h"
 
 int main(int argc, char *argv[]) 
@@ -12,20 +11,14 @@ int main(int argc, char *argv[])
 
         if ((fptr = fopen(path,"r")) != NULL)
         {
-            uint8_t sig[PNG_SIG_SIZE];
-            fread(&sig, sizeof(sig), 1, fptr);
-            if(is_png(sig, PNG_SIG_SIZE))
+            simple_PNG_p png_p = malloc(sizeof(struct simple_PNG));
+            if(read_simple_png(png_p, fptr) == 0)
             {
-                chunk_p ihdr_chunk_p = malloc(sizeof(struct chunk));
-                fread(ihdr_chunk_p, sizeof(struct chunk), 1, fptr);
-                data_IHDR_p ihdr_p = ihdr_chunk_p->p_data;
-                int height = get_png_height(ihdr_p);
-                int width = get_png_width(ihdr_p);
-                printf("%s: %d x %d\n", path, width, height);
+                printf("%s: %d x %d\n", path, get_png_width(png_p->p_IHDR->p_data), get_png_height(png_p->p_IHDR->p_data));
             }
             else
             {
-                printf("This file is not a png\n");
+                printf("%s: Not a PNG file", path);
             }
             
         }
