@@ -29,10 +29,10 @@
 #define CHUNK 16384  /* =256*64 on the order of 128K or 256K should be used */
 
 /* TYPEDEFS */
-typedef unsigned char U8;
+typedef unsigned char uint8_t;
 typedef unsigned long int U64;
 
 /* FUNCTION PROTOTYPES */
-int mem_def(U8 *dest, U64 *dest_len, U8 *source,  U64 source_len, int level);
-int mem_inf(U8 *dest, U64 *dest_len, U8 *source,  U64 source_len);
+int mem_def(uint8_t *dest, U64 *dest_len, uint8_t *source,  U64 source_len, int level);
+int mem_inf(uint8_t *dest, U64 *dest_len, uint8_t *source,  U64 source_len);
 void zerr(int ret);

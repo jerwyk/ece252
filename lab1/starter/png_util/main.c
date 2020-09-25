@@ -22,14 +22,14 @@
 /******************************************************************************
  * GLOBALS 
  *****************************************************************************/
-U8 gp_buf_def[BUF_LEN2]; /* output buffer for mem_def() */
-U8 gp_buf_inf[BUF_LEN2]; /* output buffer for mem_inf() */
+uint8_t gp_buf_def[BUF_LEN2]; /* output buffer for mem_def() */
+uint8_t gp_buf_inf[BUF_LEN2]; /* output buffer for mem_inf() */
 
 /******************************************************************************
  * FUNCTION PROTOTYPES 
  *****************************************************************************/
 
-void init_data(U8 *buf, int len);
+void init_data(uint8_t *buf, int len);
 
 /******************************************************************************
  * FUNCTIONS 
@@ -38,7 +38,7 @@ void init_data(U8 *buf, int len);
 /**
  * @brief initialize memory with 256 chars 0 - 255 cyclically 
  */
-void init_data(U8 *buf, int len)
+void init_data(uint8_t *buf, int len)
 {
     int i;
     for ( i = 0; i < len; i++) {
@@ -48,8 +48,8 @@ void init_data(U8 *buf, int len)
 
 int main (int argc, char **argv)
 {
-    U8 *p_buffer = NULL;  /* a buffer that contains some data to play with */
-    U32 crc_val = 0;      /* CRC value                                     */
+    uint8_t *p_buffer = NULL;  /* a buffer that contains some data to play with */
+    uint32_t crc_val = 0;      /* CRC value                                     */
     int ret = 0;          /* return value for various routines             */
     U64 len_def = 0;      /* compressed data length                        */
     U64 len_inf = 0;      /* uncompressed data length                      */

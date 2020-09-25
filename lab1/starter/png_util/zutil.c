@@ -27,14 +27,14 @@
  * NOTE: 1. the compressed data length may be longer than the input data length,
  *          especially when the input data size is very small.
  */
-int mem_def(U8 *dest, U64 *dest_len, U8 *source,  U64 source_len, int level)
+int mem_def(uint8_t *dest, U64 *dest_len, uint8_t *source,  U64 source_len, int level)
 {
     z_stream strm;    /* pass info. to and from zlib routines   */
-    U8 out[CHUNK];    /* output buffer for deflate()            */
+    uint8_t out[CHUNK];    /* output buffer for deflate()            */
     int ret = 0;      /* zlib return code                       */
     int have = 0;     /* amount of data returned from deflate() */
     int def_len = 0;  /* accumulated deflated data length       */
-    U8 *p_dest = dest;/* first empty slot in dest buffer        */
+    uint8_t *p_dest = dest;/* first empty slot in dest buffer        */
 
     
     strm.zalloc = Z_NULL;
@@ -84,14 +84,14 @@ int mem_def(U8 *dest, U64 *dest_len, U8 *source,  U64 source_len, int level)
  * @return =0  on success
  *         <>0 error
  */
-int mem_inf(U8 *dest, U64 *dest_len, U8 *source,  U64 source_len)
+int mem_inf(uint8_t *dest, U64 *dest_len, uint8_t *source,  U64 source_len)
 {
     z_stream strm;    /* pass info. to and from zlib routines   */
-    U8 out[CHUNK];    /* output buffer for inflate()            */
+    uint8_t out[CHUNK];    /* output buffer for inflate()            */
     int ret = 0;      /* zlib return code                       */
     int have = 0;     /* amount of data returned from inflate() */
     int inf_len = 0;  /* accumulated inflated data length       */
-    U8 *p_dest = dest;/* first empty slot in dest buffer        */
+    uint8_t *p_dest = dest;/* first empty slot in dest buffer        */
 
     /* allocate inflate state 8 */
     strm.zalloc = Z_NULL;
