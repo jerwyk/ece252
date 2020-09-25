@@ -1,5 +1,9 @@
+#pragma once
+
 #include <stdio.h>
-#include <byteswap.h>
+#include <stdlib.h>
+#include <arpa/inet.h>
+#include <string.h>
 
 /******************************************************************************
  * DEFINED MACROS 
@@ -10,6 +14,8 @@
 #define CHUNK_TYPE_SIZE 4 /* chunk type field size in bytes */
 #define CHUNK_CRC_SIZE  4 /* chunk CRC field size in bytes */
 #define DATA_IHDR_SIZE 13 /* IHDR chunk data field size */
+
+#define IHDR_CHUNK_SIZE CHUNK_LEN_SIZE+CHUNK_TYPE_SIZE+CHUNK_CRC_SIZE+DATA_IHDR_SIZE
 
 typedef unsigned char uint8_t;
 typedef unsigned int  uint32_t;
@@ -48,3 +54,7 @@ int is_png(uint8_t *buf, size_t n);
 
 int get_png_height(struct data_IHDR *buf);
 int get_png_width(struct data_IHDR *buf);
+
+//reads data in a png file. Returns -1 if the file is not a png
+//it does not check for corrupted files
+int read_simple_png(simple_PNG_p png, FILE* fptr);
