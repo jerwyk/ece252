@@ -6,14 +6,18 @@ LDLIBS = -lz   # link with libz
 
 # For students 
 LIB_UTIL =  ../com/png.o ./starter/png_util/crc.o
-SRCS   = pnginfo.c ../com/png.c
-OBJS   = pnginfo.o $(LIB_UTIL) 
+SRCS   = pnginfo.c ../com/png.c pnginfo.c
+OBJS1   = pnginfo.o  $(LIB_UTIL) 
+OBJS2 = findpng.o ../com/png.o
 
-TARGETS= pnginfo 
+TARGETS= pnginfo findpng
 
 all: ${TARGETS}
 
-pnginfo: $(OBJS) 
+pnginfo: $(OBJS1) 
+	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
+
+findpng: $(OBJS2) 
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
 
 %.o: %.c 
