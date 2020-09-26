@@ -26,6 +26,7 @@ int get_png_width(struct data_IHDR *buf)
 
 int read_simple_png(simple_PNG_p png, FILE* fptr)
 {
+    png = malloc(sizeof(struct simple_PNG));
     /*signature of file*/
     uint8_t sig[PNG_SIG_SIZE];
     fread(&sig, sizeof(sig), 1, fptr);

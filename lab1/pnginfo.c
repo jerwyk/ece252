@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 
         if ((fptr = fopen(path,"r")) != NULL)
         {
-            simple_PNG_p png_p = malloc(sizeof(struct simple_PNG));
+            simple_PNG_p png_p = NULL;
             if(read_simple_png(png_p, fptr) == 0)
             {
                 printf("%s: %d x %d\n", path, get_png_width(png_p->p_IHDR->p_data), get_png_height(png_p->p_IHDR->p_data));
