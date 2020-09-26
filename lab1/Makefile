@@ -5,7 +5,7 @@ LDFLAGS = -g   # debugging symbols in build
 LDLIBS = -lz   # link with libz
 
 # For students 
-LIB_UTIL =  ../com/png.o ../com/crc.o
+LIB_UTIL =  ../com/png.o ./starter/png_util/crc.o
 SRCS   = pnginfo.c ../com/png.c
 OBJS   = pnginfo.o $(LIB_UTIL) 
 

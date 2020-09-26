@@ -49,12 +49,12 @@ typedef struct simple_PNG {
     struct chunk *p_IEND;
 } *simple_PNG_p;
 
-//returns 1 if it is an png
+/*returns 1 if it is an png*/
 int is_png(uint8_t *buf, size_t n);
 
 int get_png_height(struct data_IHDR *buf);
 int get_png_width(struct data_IHDR *buf);
 
-//reads data in a png file. Returns -1 if the file is not a png
-//it does not check for corrupted files
+/*reads data in a png file. Returns -1 if the file is not a png
+  it does not check for corrupted files*/
 int read_simple_png(simple_PNG_p png, FILE* fptr);
