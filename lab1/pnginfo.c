@@ -36,6 +36,17 @@ int main(int argc, char *argv[])
                 {
                     printf("IDAT chunk CRC error: computed %lx, expected %x\n", idat_calc_crc, png_p->p_IDAT->crc);
                 }
+
+                unsigned long iend_calc_crc = crc(png_p->p_IEND->type, CHUNK_TYPE_SIZE);
+                if(iend_calc_crc != png_p->p_IEND->crc)
+                {
+                    printf("IEND chunk CRC error: computed %lx, expected %x\n", iend_calc_crc, png_p->p_IEND->crc);
+                }
+
+                free_simple_png(png_p);
+                free(IHDR_buf);
+                free(IDAT_buf);
+
             }
             else
             {

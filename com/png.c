@@ -68,8 +68,9 @@ int read_simple_png(simple_PNG_p png, FILE* fptr)
 
         /*IEND chunk*/
         /*alloc space for iend*/
-        png->p_IEND = malloc(sizeof(struct chunk));;
-        png->p_IEND->p_data = malloc(sizeof(uint8_t));
+        png->p_IEND = malloc(sizeof(struct chunk));
+        /*no data for iend*/
+        png->p_IEND->p_data = NULL;
         /*read length of chunk*/
         fread(&len_buf, CHUNK_LEN_SIZE, 1, fptr);
         png->p_IEND->length = ntohl(len_buf);
@@ -87,4 +88,19 @@ int read_simple_png(simple_PNG_p png, FILE* fptr)
         return -1;
     }
         
+}
+
+int free_simple_png(simple_PNG_p png)
+{
+    free(png->p_IHDR->p_data);
+    free(png->p_IHDR);
+
+    free(png->p_IDAT->p_data);
+    free(png->p_IDAT);
+
+    free(png->p_IEND);
+
+    free(png);
+
+    return 0;
 }
