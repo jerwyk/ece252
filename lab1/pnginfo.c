@@ -13,10 +13,10 @@ int main(int argc, char *argv[])
 
         if ((fptr = fopen(path,"r")) != NULL)
         {
-            simple_PNG_p png_p = NULL;
-            if(read_simple_png(png_p, fptr) == 0)
+            simple_PNG_p png_p;
+            if(read_simple_png(&png_p, fptr) == 0)
             {
-                printf("%s: %d x %d\n", path, get_png_width(png_p->p_IHDR->p_data), get_png_height(png_p->p_IHDR->p_data));
+                printf("%s: %d x %d\n", path, get_png_width((data_IHDR_p)png_p->p_IHDR->p_data), get_png_height((data_IHDR_p)png_p->p_IHDR->p_data));
 
                 uint8_t *IHDR_buf = malloc(CHUNK_TYPE_SIZE + DATA_IHDR_SIZE);
                 memcpy(IHDR_buf, png_p->p_IHDR->type, CHUNK_TYPE_SIZE);
