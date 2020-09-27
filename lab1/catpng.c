@@ -11,12 +11,7 @@ int main(int argc, char* argv[]){
 	if(image_count < 1){ /* error check for incorrect usage */
 		printf("Usage: ./catpng <filename>... \n");
 	}
-	
-	const long BUFFER_LENGTH = all_height * (all_width * 4 + 1);
-	uint8_t buffer[BUFFER_LENGTH]; /* buffer for decompressed data */
-	uint8_t dest_buffer[BUFFER_LENGTH]; /* buffer for compressed data */
-	uint8_t* buffer_p = buffer;
-	
+
 	for(int i = 1; i <= image_count; ++i){
 		FILE* png_file = fopen(argv[i], "rb");
 		simple_PNG_p png_image;
@@ -33,6 +28,24 @@ int main(int argc, char* argv[]){
 			}
 		}
 		all_width = ((data_IHDR_p)(png_image->p_IHDR->p_data))->width;
+		
+		free_simple_png(png_image);
+		fclose(png_file);
+	}
+	
+	const long BUFFER_LENGTH = all_height * (all_width * 4 + 1);
+	uint8_t buffer[BUFFER_LENGTH]; /* buffer for decompressed data */
+	uint8_t dest_buffer[BUFFER_LENGTH]; /* buffer for compressed data */
+	uint8_t* buffer_p = buffer;
+		
+	for(int i = 1; i <= image_count; ++i){
+		FILE* png_file = fopen(argv[i], "rb");
+		simple_PNG_p png_image;
+		status = read_simple_png(&png_image, png_file); 
+		if(status != 0){ /* error check for if file exists */
+			printf("Error %d\n", status);
+			return status;
+		}
 		
 		U64 buffer_offset = 0;
 		status = mem_inf(buffer_p, &buffer_offset, png_image->p_IDAT->p_data, png_image->p_IDAT->length);
@@ -61,14 +74,14 @@ int main(int argc, char* argv[]){
 	
 	uint8_t IHDR_buffer[17];
 	memcpy(IHDR_buffer, IHDR_chunk_type, 4);
-	memcpy(IHDR_buffer, &all_width, 4);
-	memcpy(IHDR_buffer, &all_height, 4);
-	memcpy(IHDR_buffer, IHDR_data_no_dims, 5);
+	memcpy(IHDR_buffer + 4, &all_width, 4);
+	memcpy(IHDR_buffer + 8, &all_height, 4);
+	memcpy(IHDR_buffer + 12, IHDR_data_no_dims, 5);
 	uint32_t IHDR_crc = crc(IHDR_buffer, 17);
 	
 	uint8_t IDAT_buffer[4 + compressed_length];
 	memcpy(IDAT_buffer, IDAT_chunk_type, 4);
-	memcpy(IDAT_buffer, dest_buffer, compressed_length);
+	memcpy(IDAT_buffer + 4, dest_buffer, compressed_length);
 	uint32_t IDAT_crc = crc(IDAT_buffer, 4 + compressed_length);
 	
 	FILE* dest_image = fopen("all.png", "wb");
