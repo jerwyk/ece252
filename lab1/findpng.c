@@ -69,6 +69,7 @@ int find_dir_r(char* dir)
                     { 
                         printf("%s\n", full_path);
                     }
+                    fclose(fptr);
                 }
             }
             else if(S_ISDIR(buf.st_mode)) /*is a directory*/
