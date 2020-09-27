@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
             }
             else
             {
-                printf("%s: Not a PNG file", path);
+                printf("%s: Not a PNG file\n", path);
             }
 
             fclose(fptr);
