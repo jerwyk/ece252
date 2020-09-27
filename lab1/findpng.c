@@ -8,13 +8,18 @@
 
 /*recursively search all entries in directory and subdirectory
   print file name if it is an png*/
-int find_dir_r(char* dir);
+int find_dir_r(char* dir, int *count);
 
 int main(int argc, char *argv[]) 
 {
     if(argc == 2)
     {
-        find_dir_r(argv[1]);
+        int count = 0;
+        find_dir_r(argv[1], &count);
+        if(count == 0)
+        {
+            printf("findpng: No PNG file found\n");
+        }
     }
     else
     {
@@ -23,7 +28,7 @@ int main(int argc, char *argv[])
     
 }
 
-int find_dir_r(char* dir)
+int find_dir_r(char* dir, int *count)
 {
     DIR *p_dir;
 
@@ -68,6 +73,7 @@ int find_dir_r(char* dir)
                     if(is_png(sig, PNG_SIG_SIZE))
                     { 
                         printf("%s\n", full_path);
+                        ++(*count);
                     }
                     fclose(fptr);
                 }
@@ -75,7 +81,7 @@ int find_dir_r(char* dir)
             else if(S_ISDIR(buf.st_mode)) /*is a directory*/
             {
                 /*recursively check directory*/
-                find_dir_r(full_path);
+                find_dir_r(full_path, count);
             }
         }
     }
