@@ -32,7 +32,8 @@ data_IHDR_p* get_IHDR_data(char* directory){
 }
 
 uint32_t get_IDAT_length(char* directory){
-	simple_PNG_p png_image;
+	uint32_t result;
+	simple_PNG_p* png_image = malloc(sizeof(simple_PNG_p));
 	memset(png_image, 0, sizeof(simple_PNG_p));
 	FILE* png_file = fopen(directory, "rb");
 	read_simple_png(png_image, png_file);
@@ -65,7 +66,6 @@ U64 cat_raw_data(int image_count, char* dirs[]){
 	FILE* output = fopen("output", "wb+");
 	void* buffer = malloc(total_file_size);
 	fread(buffer, 1, total_file_size, temp);
-	ret = mem_def(gp_buf_def, &len_def, p_buffer, BUF_LEN, Z_DEFAULT_COMPRESSION);
 	mem_def(output, file_size, buffer, total_file_size, Z_DEFAULT_COMPRESSION);
 	fclose(temp);
 	fclose(output);
