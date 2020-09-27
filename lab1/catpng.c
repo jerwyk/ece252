@@ -2,134 +2,89 @@
 #include "./starter/png_util/crc.h"
 #include "./starter/png_util/zutil.h"
 
-#define BUF_LEN  (256*16)
-#define BUF_LEN2 (256*32)
-
-#define PNG_SIGNATURE   "89504e470d0a1a0a"
-#define IHDR_LENGTH             "0000000d"
-#define IHDR_CHUNK_TYPE 		"49484452"
-#define IHDR_CHUNK_DATA       "0806000000"
-#define IDAT_CHUNK_TYPE         "49444154"
-#define IEND    "0000000049454e44ae426082"
-
-data_IHDR_p get_IHDR_data(char* directory);
-uint32_t get_IDAT_length(char* directory);
-uint8_t* get_IDAT_data(char* directory);
-U64 cat_raw_data(int image_count, char* dirs[]);
-int generate_output(int width, int height, int IDAT_length);
-
-data_IHDR_p get_IHDR_data(char* directory){
-	data_IHDR_p result;
-	simple_PNG_p png_image;
-	memset(png_image, 0, sizeof(struct simple_PNG));
-	
-	FILE* png_file = fopen(directory, "rb");
-	read_simple_png(png_image, png_file);
-	result = png_image->p_IHDR->p_data;
-	fclose(png_file);
-	return result;
-}
-
-uint32_t get_IDAT_length(char* directory){
-	uint32_t result;
-	simple_PNG_p png_image;
-	memset(png_image, 0, sizeof(struct simple_PNG));
-	
-	FILE* png_file = fopen(directory, "rb");
-	read_simple_png(png_image, png_file);
-	result = png_image->p_IDAT->length;
-	fclose(png_file);
-	return result;
-}
-
-uint8_t* get_IDAT_data(char* directory){
-	uint8_t* result;
-	simple_PNG_p png_image;
-	memset(png_image, 0, sizeof(struct simple_PNG));
-	FILE* png_file = fopen(directory, "rb");
-	
-	read_simple_png(png_image, png_file);
-	result = png_image->p_IDAT->p_data;
-	fclose(png_file);
-	return result;
-}
-
-U64 cat_raw_data(int image_count, char* dirs[]){
-	FILE* temp = fopen("temp", "wb+");
-	U64 file_size = 0;
-	U64 total_file_size = 0;
-	for(int i = 1; i <= image_count; ++i){
-		int buffer_length = 
-		uint8_t* buffer = malloc(sizeof(uint8_t));
-		buffer = get_IDAT_data(dirs[i]);
-		mem_inf(temp, &file_size, buffer, get_IDAT_length(dirs[i]));
-		free(buffer);
-		total_file_size += file_size;
-	}
-	FILE* output = fopen("output", "wb+");
-	void* buffer = malloc(total_file_size);
-	fread(buffer, 1, total_file_size, temp);
-	mem_def(output, file_size, buffer, total_file_size, Z_DEFAULT_COMPRESSION);
-	fclose(temp);
-	fclose(output);
-	free(buffer);
-	return file_size;
-}
-
-void fprintf_checksum(int offset, int length, FILE* filename){
-	void* buffer = malloc(length);
-	fseek(filename, offset, SEEK_SET);
-	fread(buffer, 1, length, filename);
-	fprintf(filename, "%08x", crc(buffer, length));
-	free(buffer);
-}
-
-int generate_output(int width, int height, int IDAT_length){
-	FILE* result = fopen("all.png", "wb+");
-	FILE* IDAT_data = fopen("output", "wb+");
-	
-	fprintf(result, "%s", PNG_SIGNATURE);
-	
-	fprintf(result, "%s", IHDR_LENGTH);
-	fprintf(result, "%s", IHDR_CHUNK_TYPE);
-	fprintf(result, "%08x", width);
-	fprintf(result, "%08x", height);
-	fprintf(result, "%s", IHDR_CHUNK_DATA);
-	fprintf_checksum(12, 17, result);
-	
-	char my_char;
-	while((my_char = fgetc(IDAT_data)) != EOF){
-		fputs(my_char, result);
-	}
-	fprintf(result, "%08x", IDAT_length);
-	fprintf(result, "%s", IDAT_CHUNK_TYPE);
-	
-	fprintf_checksum(37, 4 + IDAT_length, result);
-	
-	fprintf(result, "%s", IEND);
-	fclose(result);
-	return 0;
-}
-
 int main(int argc, char* argv[]){
 	int image_count = argc - 1;
-	int status = 0;
+	int all_height = 0;
+	int all_width, status, compressed_length;
 	
-	int all_width = get_png_width(get_IHDR_data(argv[1])); /* verify if all images have same width */
-	for(int i = 2; i <= image_count; ++i){
-		if(all_width != get_png_width(get_IHDR_data(argv[i]))){
-			return -1;
-		}
+	if(image_count < 1){ /* error check for incorrect usage */
+		printf("Usage: ./catpng <filename>... \n");
 	}
 	
-	int all_height = 0; /* calculates all.png height */
+	const long BUFFER_LENGTH = all_height * (all_width * 4 + 1);
+	uint8_t buffer[BUFFER_LENGTH]; /* declare buffer for decompressed data */
+	uint8_t dest_buffer[BUFFER_LENGTH];
+	
 	for(int i = 1; i <= image_count; ++i){
-		all_height += get_png_height(get_IHDR_data(argv[1]));
+		FILE* png_file = fopen(argv[i], "rb");
+		simple_PNG_p png_image;
+		status = read_simple_png(&png_image, png_file); 
+		if(status != 0){ /* error check for if file exists */
+			printf("Error %d\n", status);
+			return status;
+		}
+		all_height += ((data_IHDR_p)(png_image->p_IHDR->p_data))->height; /* calculates total height of all.png */
+		if(i != 1){ /* error check if all the files are the same width */
+			if(all_width != ((data_IHDR_p)(png_image->p_IHDR->p_data))->height){
+				printf("Images are not the same width!\n");
+				return -1;
+			}
+		}
+		all_width = ((data_IHDR_p)(png_image->p_IHDR->p_data))->width;
+		
+		U64 buffer_offset = 0;
+		status = mem_inf(buffer, &buffer_offset, png_image->p_IDAT->p_data, png_image->p_IDAT->length);
+		if(status != 0){
+			printf("Decompression error %d\n", status);
+			return status;
+		}
+		buffer += buffer_offset;
+		
+		free_simple_png(png_image);
+		fclose(png_file);
 	}
 	
-	int IDAT_chunk_length = cat_raw_data(image_count, argv);
+    status = mem_def(dest_buffer, &compressed_length, buffer, BUFFER_LENGTH, Z_DEFAULT_COMPRESSION);
+	if(status != 0){
+			printf("Compression error %d\n", status);
+			return status;
+	}
 	
-	generate_output(all_width, all_height, IDAT_chunk_length);
+	uint8_t PNG_signature[8] = {0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
+	uint8_t IHDR_length[4] = {0x00, 0x00, 0x00, 0x0d};
+	uint8_t IHDR_chunk_type[4] = {0x49, 0x48, 0x44, 0x52};
+	uint8_t IHDR_data_no_dims[5] = {0x08, 0x06, 0x00, 0x00, 0x00};
+	uint8_t IDAT_chunk_type[4] = {0x49, 0x44, 0x41, 0x54};
+	uint8_t IEND[12] = {0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82};
+	
+	uint8_t IHDR_buffer[17];
+	memcpy(IHDR_buffer, IHDR_chunk_type, 4);
+	memcpy(IHDR_buffer, &all_width, 4);
+	memcpy(IHDR_buffer, &all_height, 4);
+	memcpy(IHDR_buffer, IHDR_data_no_dims, 5);
+	uint32_t IHDR_crc = crc(IHDR_buffer, 17);
+	
+	uint8_t IDAT_buffer[4 + compressed_length];
+	memcpy(IDAT_buffer, IDAT_chunk_type, 4);
+	memcpy(IDAT_buffer, dest_buffer, compressed_length);
+	uint32_t IDAT_crc = crc(IDAT_buffer, 4 + compressed_length);
+	
+	FILE* dest_image = fopen("all.png", "wb");
+	
+	fwrite(&PNG_signature, 1, 8, dest_image);
+	fwrite(&IHDR_length, 1, 4, dest_image);
+	fwrite(&IHDR_chunk_type, 1, 4, dest_image);
+	fwrite(&all_width, 4, 1, dest_image);
+	fwrite(&all_height, 4, 1, dest_image);
+	fwrite(&IHDR_data_no_dims, 1, 5, dest_image);
+	fwrite(&IHDR_crc, 4, 1, dest_image);
+	fwrite(&compressed_length, 4, 1, dest_image);
+	fwrite(&IDAT_chunk_type, 1, 4, dest_image);
+	fwrite(&dest_buffer, 1, compressed_length, dest_image);
+	fwrite(&IDAT_crc, 4, 1, dest_image);
+	fwrite(&IEND, 1, 12, dest_image);
+	
+	fclose(dest_image);
 	
 	return 0;
 }
