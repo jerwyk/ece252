@@ -46,12 +46,15 @@ int main(int argc, char *argv[])
                 free_simple_png(png_p);
                 free(IHDR_buf);
                 free(IDAT_buf);
+                
 
             }
             else
             {
                 printf("%s: Not a PNG file", path);
             }
+
+            fclose(fptr);
             
         }
         else
