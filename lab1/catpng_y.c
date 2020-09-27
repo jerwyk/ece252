@@ -42,7 +42,6 @@ int main(int argc, char *argv[])
             exit(1);
         }
         uint64_t inf_len;
-        //printf("%u\n", sizeof());
         mem_inf(all_inf_data + all_inf_length, &inf_len, png_p->p_IDAT->p_data, png_p->p_IDAT->length);
         all_inf_length += inf_len;
 

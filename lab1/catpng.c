@@ -21,7 +21,6 @@ int generate_output(int width, int height, int IDAT_length);
 data_IHDR_p get_IHDR_data(char* directory){
 	data_IHDR_p result;
 	simple_PNG_p png_image;
-	memset(png_image, 0, sizeof(simple_PNG_p));
 	
 	FILE* png_file = fopen(directory, "rb");
 	read_simple_png(png_image, png_file);
@@ -33,7 +32,6 @@ data_IHDR_p get_IHDR_data(char* directory){
 uint32_t get_IDAT_length(char* directory){
 	uint32_t result;
 	simple_PNG_p png_image;
-	memset(png_image, 0, sizeof(simple_PNG_p));
 	
 	FILE* png_file = fopen(directory, "rb");
 	read_simple_png(png_image, png_file);
@@ -45,7 +43,6 @@ uint32_t get_IDAT_length(char* directory){
 uint8_t* get_IDAT_data(char* directory){
 	uint8_t* result;
 	simple_PNG_p png_image;
-	memset(png_image, 0, sizeof(simple_PNG_p));
 	FILE* png_file = fopen(directory, "rb");
 	
 	read_simple_png(png_image, png_file);

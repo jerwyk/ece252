@@ -27,6 +27,7 @@ int get_png_width(struct data_IHDR *buf)
 int read_simple_png(simple_PNG_p *png, FILE *fptr)
 {
     *png = malloc(sizeof(struct simple_PNG));
+    memset(png, 0, sizeof(struct simple_PNG));
     /*signature of file*/
     uint8_t sig[PNG_SIG_SIZE];
     fread(&sig, sizeof(sig), 1, fptr);
@@ -92,14 +93,20 @@ int read_simple_png(simple_PNG_p *png, FILE *fptr)
 int free_simple_png(simple_PNG_p png)
 {
     free(png->p_IHDR->p_data);
+    png->p_IHDR->p_data = NULL;
     free(png->p_IHDR);
+    png->p_IHDR = NULL;
 
     free(png->p_IDAT->p_data);
+    png->p_IDAT->p_data = NULL;
     free(png->p_IDAT);
+    png->p_IDAT = NULL;
 
     free(png->p_IEND);
+    png->p_IEND = NULL;
 
-    free(png);
+    free(png); 
+    png = NULL;
 
     return 0;
 }

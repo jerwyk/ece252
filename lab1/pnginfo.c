@@ -45,7 +45,9 @@ int main(int argc, char *argv[])
 
                 free_simple_png(png_p);
                 free(IHDR_buf);
+                IHDR_buf = NULL;
                 free(IDAT_buf);
+                IDAT_buf = NULL;
                 
 
             }
@@ -55,7 +57,7 @@ int main(int argc, char *argv[])
             }
 
             fclose(fptr);
-            
+
         }
         else
         {
