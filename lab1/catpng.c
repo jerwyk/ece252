@@ -77,10 +77,14 @@ int main(int argc, char* argv[]){
 	uint8_t IDAT_chunk_type[4] = {0x49, 0x44, 0x41, 0x54};
 	uint8_t IEND[12] = {0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82};
 	
+	uint32_t width_network = htonl(all_width);
+	uint32_t height_network = htonl(all_height);
+	uint32_t length_network = htonl(compressed_length);
+	
 	uint8_t IHDR_buffer[17];
 	memcpy(IHDR_buffer, IHDR_chunk_type, 4);
-	memcpy(IHDR_buffer + 4, &all_width, 4);
-	memcpy(IHDR_buffer + 8, &all_height, 4);
+	memcpy(IHDR_buffer + 4, &width_network, 4);
+	memcpy(IHDR_buffer + 8, &height_network, 4);
 	memcpy(IHDR_buffer + 12, IHDR_data_no_dims, 5);
 	uint32_t IHDR_crc = crc(IHDR_buffer, 17);
 
@@ -92,9 +96,6 @@ int main(int argc, char* argv[]){
 	
 	uint32_t IHDR_crc_network = htonl(IHDR_crc);
 	uint32_t IDAT_crc_network = htonl(IDAT_crc);
-	uint32_t width_network = htonl(all_width);
-	uint32_t height_network = htonl(all_height);
-	uint32_t length_network = htonl(compressed_length);
 	
 	FILE* dest_image = fopen("all.png", "wb+");
 	
