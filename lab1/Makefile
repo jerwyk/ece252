@@ -9,8 +9,9 @@ LIB_UTIL =  ../com/png.o ./starter/png_util/crc.o
 SRCS   = pnginfo.c ../com/png.c pnginfo.c
 OBJS1   = pnginfo.o  $(LIB_UTIL) 
 OBJS2 = findpng.o ../com/png.o
+OBJS3 = catpng.o $(LIB_UTIL) ./starter/png_util/zutil.o ./starter/png_util/lab_png.o
 
-TARGETS= pnginfo findpng
+TARGETS= pnginfo findpng catpng
 
 all: ${TARGETS}
 
@@ -18,6 +19,9 @@ pnginfo: $(OBJS1)
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
 
 findpng: $(OBJS2) 
+	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
+	
+catpng: $(OBJS3) 
 	$(LD) -o $@ $^ $(LDLIBS) $(LDFLAGS) 
 
 %.o: %.c 
