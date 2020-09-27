@@ -14,20 +14,25 @@ int main(int argc, char* argv[]){
 
 	for(int i = 1; i <= image_count; ++i){
 		FILE* png_file = fopen(argv[i], "rb");
+		if(png_file == NULL){
+			printf("File failed to open!\n");
+			return -1;
+		}
+		
 		simple_PNG_p png_image;
 		status = read_simple_png(&png_image, png_file); 
-		if(status != 0){ /* error check for if file exists */
-			printf("Error %d\n", status);
+		if(status != 0){ /* error check for if file is png */
+			printf("File is not a valid png file. \n");
 			return status;
 		}
-		all_height += ((data_IHDR_p)(png_image->p_IHDR->p_data))->height; /* calculates total height of all.png */
+		all_height += get_png_height((data_IHDR_p)png_image->p_IHDR->p_data); /* calculates total height of all.png */
 		if(i != 1){ /* error check if all the files are the same width */
-			if(all_width != ((data_IHDR_p)(png_image->p_IHDR->p_data))->height){
+			if(all_width != get_png_width((data_IHDR_p)png_image->p_IHDR->p_data)){
 				printf("Images are not the same width!\n");
 				return -1;
 			}
 		}
-		all_width = ((data_IHDR_p)(png_image->p_IHDR->p_data))->width;
+		all_width = get_png_width((data_IHDR_p)png_image->p_IHDR->p_data);
 		
 		free_simple_png(png_image);
 		fclose(png_file);
@@ -78,25 +83,32 @@ int main(int argc, char* argv[]){
 	memcpy(IHDR_buffer + 8, &all_height, 4);
 	memcpy(IHDR_buffer + 12, IHDR_data_no_dims, 5);
 	uint32_t IHDR_crc = crc(IHDR_buffer, 17);
+
 	
 	uint8_t IDAT_buffer[4 + compressed_length];
 	memcpy(IDAT_buffer, IDAT_chunk_type, 4);
 	memcpy(IDAT_buffer + 4, dest_buffer, compressed_length);
 	uint32_t IDAT_crc = crc(IDAT_buffer, 4 + compressed_length);
 	
-	FILE* dest_image = fopen("all.png", "wb");
+	uint32_t IHDR_crc_network = htonl(IHDR_crc);
+	uint32_t IDAT_crc_network = htonl(IDAT_crc);
+	uint32_t width_network = htonl(all_width);
+	uint32_t height_network = htonl(all_height);
+	uint32_t length_network = htonl(compressed_length);
+	
+	FILE* dest_image = fopen("all.png", "wb+");
 	
 	fwrite(&PNG_signature, 1, 8, dest_image);
 	fwrite(&IHDR_length, 1, 4, dest_image);
 	fwrite(&IHDR_chunk_type, 1, 4, dest_image);
-	fwrite(&all_width, 4, 1, dest_image);
-	fwrite(&all_height, 4, 1, dest_image);
+	fwrite(&width_network, 4, 1, dest_image);
+	fwrite(&height_network, 4, 1, dest_image);
 	fwrite(&IHDR_data_no_dims, 1, 5, dest_image);
-	fwrite(&IHDR_crc, 4, 1, dest_image);
-	fwrite(&compressed_length, 4, 1, dest_image);
+	fwrite(&IHDR_crc_network, 4, 1, dest_image);
+	fwrite(&length_network, 4, 1, dest_image);
 	fwrite(&IDAT_chunk_type, 1, 4, dest_image);
 	fwrite(&dest_buffer, 1, compressed_length, dest_image);
-	fwrite(&IDAT_crc, 4, 1, dest_image);
+	fwrite(&IDAT_crc_network, 4, 1, dest_image);
 	fwrite(&IEND, 1, 12, dest_image);
 	
 	fclose(dest_image);
