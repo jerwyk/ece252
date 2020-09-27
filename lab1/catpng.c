@@ -21,7 +21,7 @@ int generate_output(int width, int height, int IDAT_length);
 data_IHDR_p get_IHDR_data(char* directory){
 	data_IHDR_p result;
 	simple_PNG_p png_image;
-	memset(png_image, 0, sizeof(simple_PNG_p));
+	memset(png_image, 0, sizeof(struct simple_PNG));
 	
 	FILE* png_file = fopen(directory, "rb");
 	read_simple_png(png_image, png_file);
@@ -33,7 +33,7 @@ data_IHDR_p get_IHDR_data(char* directory){
 uint32_t get_IDAT_length(char* directory){
 	uint32_t result;
 	simple_PNG_p png_image;
-	memset(png_image, 0, sizeof(simple_PNG_p));
+	memset(png_image, 0, sizeof(struct simple_PNG));
 	
 	FILE* png_file = fopen(directory, "rb");
 	read_simple_png(png_image, png_file);
@@ -45,7 +45,7 @@ uint32_t get_IDAT_length(char* directory){
 uint8_t* get_IDAT_data(char* directory){
 	uint8_t* result;
 	simple_PNG_p png_image;
-	memset(png_image, 0, sizeof(simple_PNG_p));
+	memset(png_image, 0, sizeof(struct simple_PNG));
 	FILE* png_file = fopen(directory, "rb");
 	
 	read_simple_png(png_image, png_file);
@@ -59,6 +59,7 @@ U64 cat_raw_data(int image_count, char* dirs[]){
 	U64 file_size = 0;
 	U64 total_file_size = 0;
 	for(int i = 1; i <= image_count; ++i){
+		int buffer_length = 
 		uint8_t* buffer = malloc(sizeof(uint8_t));
 		buffer = get_IDAT_data(dirs[i]);
 		mem_inf(temp, &file_size, buffer, get_IDAT_length(dirs[i]));
