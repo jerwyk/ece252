@@ -52,7 +52,7 @@ int read_simple_png(simple_PNG_p *png, FILE *fptr)
 
         /*IDAT chunk*/
         /*alloc space for idat*/
-        (*png)->p_IDAT = malloc(sizeof(struct chunk));;
+        (*png)->p_IDAT = malloc(sizeof(struct chunk));
         /*read length of chunk*/
         fread(&len_buf, CHUNK_LEN_SIZE, 1, fptr);
         (*png)->p_IDAT->length = ntohl(len_buf);
