@@ -27,10 +27,12 @@ int main(int argc, char *argv[])
     read_simple_png(&all_png, fptr);
     free(all_png->p_IDAT->p_data);
     all_png->p_IDAT->p_data = NULL;
+
     uint8_t all_inf_data[BUF_LEN*(argc - 1)];
     uint64_t all_inf_length = 0;
     uint32_t all_height = 0;
     simple_PNG_p png_p = NULL;
+
     for (int i = 1; i < argc; i++)
     {      
         fptr = fopen(argv[i], "r");
@@ -56,7 +58,7 @@ int main(int argc, char *argv[])
     memcpy(all_def_data, all_png->p_IDAT->type, CHUNK_TYPE_SIZE);
     mem_def(all_def_data + CHUNK_TYPE_SIZE, &def_len, all_inf_data, all_inf_length, Z_DEFAULT_COMPRESSION);
 
-    all_png->p_IDAT->crc = crc(all_def_data, def_len);
+    all_png->p_IDAT->crc = crc(all_def_data, def_len + CHUNK_TYPE_SIZE);
     all_png->p_IDAT->length = (uint32_t)def_len;
     all_png->p_IDAT->p_data = all_def_data + CHUNK_TYPE_SIZE;
 
