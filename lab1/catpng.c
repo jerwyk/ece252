@@ -1,4 +1,3 @@
-#include "catpng.h"
 #include "../com/png.h"
 #include "./starter/png_util/crc.h"
 #include "./starter/png_util/zutil.h"
