@@ -18,11 +18,11 @@ int main(int argc, char *argv[])
             {
                 printf("%s: %d x %d\n", path, get_png_width((data_IHDR_p)png_p->p_IHDR->p_data), get_png_height((data_IHDR_p)png_p->p_IHDR->p_data));
 
-                uint8_t *IHDR_buf = malloc(CHUNK_TYPE_SIZE + DATA_IHDR_SIZE);
+                uint8_t IHDR_buf[CHUNK_TYPE_SIZE + DATA_IHDR_SIZE];
                 memcpy(IHDR_buf, png_p->p_IHDR->type, CHUNK_TYPE_SIZE);
                 memcpy(IHDR_buf + CHUNK_TYPE_SIZE, png_p->p_IHDR->p_data, DATA_IHDR_SIZE);
 
-                uint8_t *IDAT_buf = malloc(CHUNK_TYPE_SIZE + png_p->p_IDAT->length);
+                uint8_t IDAT_buf[CHUNK_TYPE_SIZE + png_p->p_IDAT->length];
                 memcpy(IDAT_buf, png_p->p_IDAT->type, CHUNK_TYPE_SIZE);
                 memcpy(IDAT_buf + CHUNK_TYPE_SIZE, png_p->p_IDAT->p_data, png_p->p_IDAT->length);
                 
@@ -43,13 +43,7 @@ int main(int argc, char *argv[])
                     printf("IEND chunk CRC error: computed %lx, expected %x\n", iend_calc_crc, png_p->p_IEND->crc);
                 }
 
-                free_simple_png(png_p);
-                free(IHDR_buf);
-                IHDR_buf = NULL;
-                free(IDAT_buf);
-                IDAT_buf = NULL;
-                
-
+                free_simple_png(png_p);           
             }
             else
             {
