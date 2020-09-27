@@ -9,7 +9,7 @@ LIB_UTIL =  ../com/png.o ./starter/png_util/crc.o
 SRCS   = pnginfo.c ../com/png.c pnginfo.c
 OBJS1   = pnginfo.o  $(LIB_UTIL) 
 OBJS2 = findpng.o ../com/png.o
-OBJS3 = catpng.o $(LIB_UTIL) ./starter/png_util/zutil.o ./starter/png_util/lab_png.o
+OBJS3 = catpng.o $(LIB_UTIL) ./starter/png_util/zutil.o
 
 TARGETS= pnginfo findpng catpng
 
