@@ -5,15 +5,17 @@
 int main(int argc, char* argv[]){
 	int image_count = argc - 1;
 	int all_height = 0;
-	int all_width, status, compressed_length;
+	int all_width, status;
+	U64 compressed_length;
 	
 	if(image_count < 1){ /* error check for incorrect usage */
 		printf("Usage: ./catpng <filename>... \n");
 	}
 	
 	const long BUFFER_LENGTH = all_height * (all_width * 4 + 1);
-	uint8_t buffer[BUFFER_LENGTH]; /* declare buffer for decompressed data */
-	uint8_t dest_buffer[BUFFER_LENGTH];
+	uint8_t buffer[BUFFER_LENGTH]; /* buffer for decompressed data */
+	uint8_t dest_buffer[BUFFER_LENGTH]; /* buffer for compressed data */
+	uint8_t* buffer_p = buffer;
 	
 	for(int i = 1; i <= image_count; ++i){
 		FILE* png_file = fopen(argv[i], "rb");
@@ -33,12 +35,12 @@ int main(int argc, char* argv[]){
 		all_width = ((data_IHDR_p)(png_image->p_IHDR->p_data))->width;
 		
 		U64 buffer_offset = 0;
-		status = mem_inf(buffer, &buffer_offset, png_image->p_IDAT->p_data, png_image->p_IDAT->length);
+		status = mem_inf(buffer_p, &buffer_offset, png_image->p_IDAT->p_data, png_image->p_IDAT->length);
 		if(status != 0){
 			printf("Decompression error %d\n", status);
 			return status;
 		}
-		buffer += buffer_offset;
+		buffer_p += buffer_offset;
 		
 		free_simple_png(png_image);
 		fclose(png_file);
