@@ -1,7 +1,6 @@
 #include "../com/png.h"
 #include "./starter/png_util/crc.h"
 #include "./starter/png_util/zutil.h"
-#include "./starter/png_util/lab_png.h"
 
 #define BUF_LEN  (256*16)
 #define BUF_LEN2 (256*32)
@@ -13,29 +12,27 @@
 #define IDAT_CHUNK_TYPE         "49444154"
 #define IEND    "0000000049454e44ae426082"
 
-typedef unsigned int crc;
-
 data_IHDR_p get_IHDR_data(char* directory);
 uint32_t get_IDAT_length(char* directory);
 uint8_t* get_IDAT_data(char* directory);
-int cat_raw_data(int image_count, char* dirs[]);
-int generate_output(int width, int height);
+U64 cat_raw_data(int image_count, char* dirs[]);
+int generate_output(int width, int height, int IDAT_length);
 
 data_IHDR_p get_IHDR_data(char* directory){
 	data_IHDR_p result;
-	simple_PNG_p* png_image = malloc(sizeof(simple_PNG_p));
+	simple_PNG_p png_image;
 	memset(png_image, 0, sizeof(simple_PNG_p));
 	
 	FILE* png_file = fopen(directory, "rb");
 	read_simple_png(png_image, png_file);
 	result = png_image->p_IHDR->p_data;
-	fclose(png_image);
+	fclose(png_file);
 	return result;
 }
 
 uint32_t get_IDAT_length(char* directory){
 	uint32_t result;
-	simple_PNG_p* png_image = malloc(sizeof(simple_PNG_p));
+	simple_PNG_p png_image;
 	memset(png_image, 0, sizeof(simple_PNG_p));
 	
 	FILE* png_file = fopen(directory, "rb");
@@ -47,7 +44,7 @@ uint32_t get_IDAT_length(char* directory){
 
 uint8_t* get_IDAT_data(char* directory){
 	uint8_t* result;
-	simple_PNG_p* png_image = malloc(sizeof(simple_PNG_p));
+	simple_PNG_p png_image;
 	memset(png_image, 0, sizeof(simple_PNG_p));
 	FILE* png_file = fopen(directory, "rb");
 	
@@ -62,7 +59,7 @@ U64 cat_raw_data(int image_count, char* dirs[]){
 	U64 file_size = 0;
 	U64 total_file_size = 0;
 	for(int i = 1; i <= image_count; ++i){
-		uint8_t* buffer = malloc(uint8_t);
+		uint8_t* buffer = malloc(sizeof(uint8_t));
 		buffer = get_IDAT_data(dirs[i]);
 		mem_inf(temp, &file_size, buffer, get_IDAT_length(dirs[i]));
 		free(buffer);
@@ -96,7 +93,7 @@ int generate_output(int width, int height, int IDAT_length){
 	fprintf(result, "%s", IHDR_CHUNK_TYPE);
 	fprintf(result, "%08x", width);
 	fprintf(result, "%08x", height);
-	fprintf(result, "%s", IHDR_CHUNK_DATA)
+	fprintf(result, "%s", IHDR_CHUNK_DATA);
 	fprintf_checksum(12, 17, result);
 	
 	char my_char;
@@ -119,7 +116,7 @@ int main(int argc, char* argv[]){
 	
 	int all_width = get_png_width(get_IHDR_data(argv[1])); /* verify if all images have same width */
 	for(int i = 2; i <= image_count; ++i){
-		if(all_width != get_png_width(get_IHDR_data(argv[i])){
+		if(all_width != get_png_width(get_IHDR_data(argv[i]))){
 			return -1;
 		}
 	}
@@ -129,7 +126,7 @@ int main(int argc, char* argv[]){
 		all_height += get_png_height(get_IHDR_data(argv[1]));
 	}
 	
-	int IDAT_chunk_length = cat_raw_data(image_count, argv[]);
+	int IDAT_chunk_length = cat_raw_data(image_count, argv);
 	
 	generate_output(all_width, all_height, IDAT_chunk_length);
 	
