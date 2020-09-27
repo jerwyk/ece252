@@ -35,7 +35,6 @@ int read_simple_png(simple_PNG_p *png, FILE *fptr)
         /*IHDR chunk*/
         /*alloc space for ihdr*/
         (*png)->p_IHDR = malloc(sizeof(struct chunk));
-        (*png)->p_IHDR->p_data = malloc(sizeof(uint8_t));
         /*read length of chunk*/
         uint32_t len_buf = 0;
         fread(&len_buf, CHUNK_LEN_SIZE, 1, fptr);
@@ -53,7 +52,6 @@ int read_simple_png(simple_PNG_p *png, FILE *fptr)
         /*IDAT chunk*/
         /*alloc space for idat*/
         (*png)->p_IDAT = malloc(sizeof(struct chunk));;
-        (*png)->p_IDAT->p_data = malloc(sizeof(uint8_t));
         /*read length of chunk*/
         fread(&len_buf, CHUNK_LEN_SIZE, 1, fptr);
         (*png)->p_IDAT->length = ntohl(len_buf);
