@@ -31,18 +31,26 @@ uint8_t* get_IDAT_data(char* directory){
 	return result;
 }
 
-int cat_raw_data(int image_count, char* dirs[]){
+U64 cat_raw_data(int image_count, char* dirs[]){
 	FILE* temp = fopen("temp", "wb+");
-	int IDAT_length = 0;
+	U64 file_size = 0;
+	U64 total_file_size = 0;
 	for(int i = 1; i <= image_count; ++i){
-		decompress()
-		write_to_output()
+		uint8_t* buffer = malloc(uint8_t);
+		buffer = get_IDAT_data(dirs[i]);
+		mem_inf(temp, &file_size, buffer, get_IDAT_length(dirs[i]));
+		free(buffer);
+		total_file_size += file_size;
 	}
 	FILE* output = fopen("output", "wb+");
-	recompress(temp -> output)
+	void* buffer = malloc(total_file_size);
+	fread(buffer, 1, total_file_size, temp);
+	ret = mem_def(gp_buf_def, &len_def, p_buffer, BUF_LEN, Z_DEFAULT_COMPRESSION);
+	mem_def(output, file_size, buffer, total_file_size, Z_DEFAULT_COMPRESSION);
 	fclose(temp);
 	fclose(output);
-	return IDAT_length;
+	free(buffer);
+	return file_size;
 }
 
 void fprintf_checksum(int offset, int length, FILE* filename){
@@ -50,10 +58,13 @@ void fprintf_checksum(int offset, int length, FILE* filename){
 	fseek(filename, offset, SEEK_SET);
 	fread(buffer, 1, length, filename);
 	fprintf(filename, "%08x", crc(buffer, length));
+	free(buffer);
 }
 
 int generate_output(int width, int height, int IDAT_length){
 	FILE* result = fopen("all.png", "wb+");
+	FILE* IDAT_data = fopen("output", "wb+");
+	
 	fprintf(result, "%s", PNG_SIGNATURE);
 	
 	fprintf(result, "%s", IHDR_LENGTH);
@@ -63,9 +74,13 @@ int generate_output(int width, int height, int IDAT_length){
 	fprintf(result, "%s", IHDR_CHUNK_DATA)
 	fprintf_checksum(12, 17, result);
 	
+	char my_char;
+	while(my_char = fgetc(IDAT_data) != EOF){
+		fputs(my_char, result);
+	}
 	fprintf(result, "%08x", IDAT_length);
 	fprintf(result, "%s", IDAT_CHUNK_TYPE);
-	fprintf(result, "%s", "temp");
+	
 	fprintf_checksum(37, 4 + IDAT_length, result);
 	
 	fprintf(result, "%s", IEND);
