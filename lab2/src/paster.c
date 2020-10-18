@@ -173,6 +173,8 @@ void *curl_api_call(void *ptr)
 
 int main(int argc, char** argv)
 {
+    /* init for http call */
+    curl_global_init(CURL_GLOBAL_DEFAULT);
     /*default params */
     int thread_num = 1;
     int image_num = 1;
@@ -213,15 +215,14 @@ int main(int argc, char** argv)
     }
 
     pthread_t *threads = malloc(sizeof(pthread_t) * thread_num);
+    int *thread_state = malloc(sizeof(int) * thread_num);
     char url[50] = {'\0'};
     sprintf(url, base_url, "%d",image_num);
 
     int server_num = 1;
-    char *png_buf[STRIP_NUM] = {NULL};
-    int recv_num = 0;
-
-    /* init for http call */
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+    char **png_buf = malloc(sizeof(char*)  * STRIP_NUM);
+    int *recv_num = malloc(sizeof(int));
+    *recv_num = 0;
     
     for(size_t i = 0; i < thread_num; ++i)
     {
@@ -230,15 +231,16 @@ int main(int argc, char** argv)
         arg.server_num = server_num;
         round_increase(server_num, 3);
         arg.url = url;
-        arg.recv_num = &recv_num;
+        arg.recv_num = recv_num;
         arg.buf = png_buf;
 
-        pthread_create(&threads[i], NULL, curl_api_call, (void*) &arg);
+        thread_state[i] = pthread_create(&threads[i], NULL, curl_api_call, (void*) &arg);
     }
 
     for(size_t i = 0; i < thread_num; ++i)
     {
-        pthread_join( threads[i], NULL);
+        if(thread_state[i] == 0)
+            pthread_join( threads[i], NULL);
     }
 
     catpng("all.png", png_buf, STRIP_NUM);
@@ -249,8 +251,10 @@ int main(int argc, char** argv)
         if(png_buf[i] != NULL)
             free(png_buf[i]);
     }
+    free(threads);
+    free(thread_state);
+    free(recv_num);
+    free(png_buf);
     curl_global_cleanup();
     return 0;
-
-
 }

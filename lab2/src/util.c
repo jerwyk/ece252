@@ -32,7 +32,8 @@ int catpng(const char* dest, char **pngs, size_t num)
 		uint64_t buffer_offset = 0;
         parse_simple_png(png_image, pngs[i]);
 		status = mem_inf(buffer_p, &buffer_offset, png_image->p_IDAT->p_data, png_image->p_IDAT->length);
-		if(status != 0){
+		if(status != 0)
+		{
 			printf("Decompression error %d\n", status);
 			return status;
 		}
@@ -40,7 +41,8 @@ int catpng(const char* dest, char **pngs, size_t num)
 	}
 	
     status = mem_def(dest_buffer, &compressed_length, buffer, BUFFER_LENGTH, Z_DEFAULT_COMPRESSION);
-	if(status != 0){
+	if(status != 0)
+	{
 			printf("Compression error %d\n", status);
 			return status;
 	}
