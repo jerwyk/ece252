@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
         mem_inf(all_inf_data + all_inf_length, &inf_len, png_p->p_IDAT->p_data, png_p->p_IDAT->length);
         all_inf_length += inf_len;
 
-        all_height += ((data_IHDR_p)png_p->p_IHDR->p_data)->height;
+        all_height += get_png_height((data_IHDR_p)png_p->p_IHDR->p_data);
 
         fclose(fptr);
     }
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
     all_png->p_IDAT->length = (uint32_t)def_len;
     all_png->p_IDAT->p_data = all_def_data + CHUNK_TYPE_SIZE;
 
-    ((data_IHDR_p)all_png->p_IHDR->p_data)->height = all_height;
+    ((data_IHDR_p)all_png->p_IHDR->p_data)->height = htonl(all_height);
     uint8_t *IHDR_buf = malloc(CHUNK_TYPE_SIZE + DATA_IHDR_SIZE);
     memcpy(IHDR_buf, all_png->p_IHDR->type, CHUNK_TYPE_SIZE);
     memcpy(IHDR_buf + CHUNK_TYPE_SIZE, all_png->p_IHDR->p_data, DATA_IHDR_SIZE);

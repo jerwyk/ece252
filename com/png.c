@@ -90,6 +90,75 @@ int read_simple_png(simple_PNG_p *png, FILE *fptr)
         
 }
 
+#define read_data(data, dest, offset, len) \
+({ \
+    memcpy(dest, data+offset, len); \
+    offset += len; \
+})
+
+int parse_simple_png(simple_PNG_p png, char *data)
+{
+    /*skip first 8 bytes */
+    int offset = 8;
+    /*IHDR chunk*/
+    /*read length of chunk*/
+    uint32_t len_buf = 0;
+    read_data(data, &len_buf, offset, CHUNK_LEN_SIZE);
+    png->p_IHDR->length = ntohl(len_buf);
+    /*read type of chunk*/
+    read_data(data, &(png->p_IHDR->type), offset, CHUNK_TYPE_SIZE);
+    /*read IHDR data*/
+    read_data(data, png->p_IHDR->p_data, offset, DATA_IHDR_SIZE);
+    /*read crc value*/
+    read_data(data, &(png->p_IHDR->crc), offset, CHUNK_CRC_SIZE);
+    png->p_IHDR->crc = ntohl(png->p_IHDR->crc);
+
+    /*IDAT chunk*/
+    /*read length of chunk*/
+    read_data(data, &len_buf, offset, CHUNK_LEN_SIZE);
+    png->p_IDAT->length = ntohl(len_buf);
+    /*read type of chunk*/
+    read_data(data, &(png->p_IDAT->type), offset, CHUNK_TYPE_SIZE);
+    /*read data*/
+    if(png->p_IDAT->p_data != NULL)
+    {
+        free(png->p_IDAT->p_data);
+    }
+    png->p_IDAT->p_data = malloc(png->p_IDAT->length);
+    read_data(data, png->p_IDAT->p_data, offset, png->p_IDAT->length);
+    /*read crc value*/
+    read_data(data, &(png->p_IDAT->crc), offset, CHUNK_CRC_SIZE);
+    png->p_IDAT->crc = ntohl(png->p_IDAT->crc);
+
+    /*IEND chunk*/    
+    /*read length of chunk*/
+    read_data(data, &len_buf, offset, CHUNK_LEN_SIZE);
+    png->p_IEND->length = ntohl(len_buf);
+    /*read type of chunk*/
+    read_data(data, &(png->p_IEND->type), offset, CHUNK_TYPE_SIZE);
+    /*no data for iend*/
+    png->p_IEND->p_data = NULL;
+    /*read crc*/
+    read_data(data, &(png->p_IEND->crc), offset, CHUNK_CRC_SIZE);
+    png->p_IEND->crc = ntohl(png->p_IEND->crc);
+
+    return 0;
+}
+
+simple_PNG_p init_simple_png()
+{
+    simple_PNG_p png = malloc(sizeof(struct simple_PNG));
+    /*alloc space for ihdr*/
+    png->p_IHDR = malloc(sizeof(struct chunk));
+    png->p_IHDR->p_data = malloc(DATA_IHDR_SIZE);
+    /*alloc space for idat*/
+    png->p_IDAT = malloc(sizeof(struct chunk));
+    /*alloc space for iend*/
+    png->p_IEND = malloc(sizeof(struct chunk));
+
+    return png;
+}
+
 int free_simple_png(simple_PNG_p png)
 {
     free(png->p_IHDR->p_data);

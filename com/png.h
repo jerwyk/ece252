@@ -60,5 +60,10 @@ int get_png_width(struct data_IHDR *buf);
   it does not check for corrupted files*/
 int read_simple_png(simple_PNG_p *png, FILE *fptr);
 
+/*parse raw png data into simple_PNG_p struct */
+int parse_simple_png(simple_PNG_p png, char *data);
+
+simple_PNG_p init_simple_png();
+
 /*frees the allocated memory in a simple_PNG struct*/
 int free_simple_png(simple_PNG_p png);

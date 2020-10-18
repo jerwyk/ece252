@@ -49,7 +49,7 @@ void init_data(uint8_t *buf, int len)
 int main (int argc, char **argv)
 {
     uint8_t *p_buffer = NULL;  /* a buffer that contains some data to play with */
-    uint32_t crc_val = 0;      /* CRC value                                     */
+    U32 crc_val = 0;      /* CRC value                                     */
     int ret = 0;          /* return value for various routines             */
     U64 len_def = 0;      /* compressed data length                        */
     U64 len_inf = 0;      /* uncompressed data length                      */
