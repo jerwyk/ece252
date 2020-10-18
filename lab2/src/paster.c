@@ -15,7 +15,7 @@
        __typeof__ (b) _b = (b); \
      _a > _b ? _a : _b; })
 
-const char* urls[3] = {"http://ece252-1.uwaterloo.ca:2520/image?img=1",
+const char* urls[3] = {"http://ece252-1.uwaterloo.ca:2520/image?img=2",
                        "http://ece252-2.uwaterloo.ca:2520/image?img=",
                        "http://ece252-3.uwaterloo.ca:2520/image?img="};
 
@@ -178,14 +178,16 @@ int main(int argc, char** argv)
             }         
         }
 
-        catpng("all.png", png_buf, STRIP_NUM);
+        recv_buf_cleanup(&recv_buf);
         curl_easy_cleanup(curl_handle);
+        catpng("all.png", png_buf, STRIP_NUM);
     }
 
     /* clean up */
     for(int i = 0; i < STRIP_NUM; ++i)
     {
-        free(png_buf[i]);
+        if(png_buf[i] != NULL)
+            free(png_buf[i]);
     }
     curl_global_cleanup();
     return 0;
