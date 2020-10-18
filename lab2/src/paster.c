@@ -220,7 +220,7 @@ int main(int argc, char** argv)
     sprintf(url, base_url, "%d",image_num);
 
     int server_num = 1;
-    char **png_buf = malloc(sizeof(char*)  * STRIP_NUM);
+    char **png_buf = calloc(STRIP_NUM, sizeof(char*));
     int *recv_num = malloc(sizeof(int));
     *recv_num = 0;
     
