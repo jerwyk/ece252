@@ -125,11 +125,12 @@ void *curl_api_call(void *ptr)
     recv_buf_init(&recv_buf, BUF_SIZE);
 
     curl_handle = curl_easy_init();
-    sprintf(arg->url, arg->url, arg->server_num);
+    char url_buf[50];
+    sprintf(url_buf, arg->url, arg->server_num);
     if(curl_handle) 
     {
         /* curl settings */
-        curl_easy_setopt(curl_handle, CURLOPT_URL, arg->url);
+        curl_easy_setopt(curl_handle, CURLOPT_URL, url_buf);
         /* register write call back function to process received data */
         curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, curl_write_data); 
         /* user defined data structure passed to the call back function */
