@@ -120,10 +120,10 @@ int parse_simple_png(simple_PNG_p png, char *data)
     /*read type of chunk*/
     read_data(data, &(png->p_IDAT->type), offset, CHUNK_TYPE_SIZE);
     /*read data*/
-    if(png->p_IDAT->p_data != NULL)
-    {
-        free(png->p_IDAT->p_data);
-    }
+    // if(png->p_IDAT->p_data != NULL)
+    //{
+    //    free(png->p_IDAT->p_data);
+    //}
     png->p_IDAT->p_data = malloc(png->p_IDAT->length);
     read_data(data, png->p_IDAT->p_data, offset, png->p_IDAT->length);
     /*read crc value*/

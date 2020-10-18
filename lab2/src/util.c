@@ -6,8 +6,8 @@ int catpng(const char* dest, char **pngs, size_t num)
 	int all_width, status;
 	uint64_t compressed_length;
     simple_PNG_p png_image = init_simple_png();
-
-    for(int i = 0; i < num; ++i)
+	
+    for(size_t i = 0; i < num; ++i)
     {		
 		parse_simple_png(png_image, pngs[i]);
 		all_height += get_png_height((data_IHDR_p)png_image->p_IHDR->p_data); /* calculates total height of all.png */
@@ -26,8 +26,8 @@ int catpng(const char* dest, char **pngs, size_t num)
 	uint8_t buffer[BUFFER_LENGTH]; /* buffer for decompressed data */
 	uint8_t dest_buffer[BUFFER_LENGTH]; /* buffer for compressed data */
 	uint8_t* buffer_p = buffer;
-		
-	for(int i = 0; i < num; ++i)
+	
+	for(size_t i = 0; i < num; ++i)
     {
 		uint64_t buffer_offset = 0;
         parse_simple_png(png_image, pngs[i]);
@@ -44,6 +44,8 @@ int catpng(const char* dest, char **pngs, size_t num)
 			printf("Compression error %d\n", status);
 			return status;
 	}
+
+    free_simple_png(png_image);
 
     uint8_t PNG_signature[8] = {0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a};
 	uint8_t IHDR_length[4] = {0x00, 0x00, 0x00, 0x0d};

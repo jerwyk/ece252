@@ -177,7 +177,6 @@ int main(int argc, char** argv)
                 recv_buf_init(&recv_buf, BUF_SIZE);
             }         
         }
-
         recv_buf_cleanup(&recv_buf);
         curl_easy_cleanup(curl_handle);
         catpng("all.png", png_buf, STRIP_NUM);
