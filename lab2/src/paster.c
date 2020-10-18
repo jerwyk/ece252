@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <curl/curl.h>
+#include <pthread.h>
 #include "../../com/png.h"
 #include "util.h"
 
@@ -15,9 +16,9 @@
        __typeof__ (b) _b = (b); \
      _a > _b ? _a : _b; })
 
-const char* urls[3] = {"http://ece252-1.uwaterloo.ca:2520/image?img=1",
-                       "http://ece252-2.uwaterloo.ca:2520/image?img=",
-                       "http://ece252-3.uwaterloo.ca:2520/image?img="};
+#define round_increase(a, max) a + 1 > max ? a = 1 : ++a
+
+const char* base_url = "http://ece252-%s.uwaterloo.ca:2520/image?img=%d";
 
 typedef struct recv_buf {
     char *buf;       /* memory to hold a copy of received data */
@@ -26,6 +27,13 @@ typedef struct recv_buf {
     int seq;         /* >=0 sequence number extracted from http header */
                      /* <0 indicates an invalid seq number */
 } RECV_BUF;
+
+typedef struct thread_arg {
+    int server_num;
+    int *recv_num;
+    char **buf;
+    char *url;
+} THREAD_ARG;
 
 /* function declearations */
 size_t curl_write_data(void *buffer, size_t size, size_t nmemb, void *userp);
@@ -107,43 +115,21 @@ int recv_buf_cleanup(RECV_BUF *ptr)
     return 0;
 }
 
-int main(int argc, char** argv)
+void *curl_api_call(void *ptr)
 {
-    /*default params */
-    int thread_num = 1;
-    int image_num = 1;
-    /*read params */
-    if(argc > 1)
-    {
-        for(int i = 1; i < argc; ++i)
-        {
-            if(strcmp(argv[i], "-t"))
-            {
-                thread_num = strtol(argv[++i], NULL, 10);
-            }
-            else if(strcmp(argv[i], "-n"))
-            {
-                image_num = strtol(argv[++i], NULL, 10);
-            }
-        }
-    }
-
-    CURL *curl_handle;
+    THREAD_ARG *arg = (THREAD_ARG*) ptr;
+    CURL *curl_handle = NULL;
     CURLcode res;
-    RECV_BUF recv_buf;
-    int server_num = 0;
-    char *png_buf[STRIP_NUM] = {NULL};
-    int recv_num = 0;
 
+    RECV_BUF recv_buf;
     recv_buf_init(&recv_buf, BUF_SIZE);
 
-    /* init for http call */
-    curl_global_init(CURL_GLOBAL_DEFAULT);
     curl_handle = curl_easy_init();
+    sprintf(arg->url, arg->url, arg->server_num);
     if(curl_handle) 
     {
         /* curl settings */
-        curl_easy_setopt(curl_handle, CURLOPT_URL, urls[0]);
+        curl_easy_setopt(curl_handle, CURLOPT_URL, arg->url);
         /* register write call back function to process received data */
         curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, curl_write_data); 
         /* user defined data structure passed to the call back function */
@@ -157,7 +143,7 @@ int main(int argc, char** argv)
         /* some servers requires a user-agent field */
         curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
-        while(recv_num < STRIP_NUM)
+        while(*(arg->recv_num) < STRIP_NUM)
         {
             res = curl_easy_perform(curl_handle);
 
@@ -167,11 +153,11 @@ int main(int argc, char** argv)
             }
             else
             {
-                if(png_buf[recv_buf.seq] == NULL)
+                if(arg->buf[recv_buf.seq] == NULL)
                 {
-                    png_buf[recv_buf.seq] = malloc(recv_buf.size);
-                    memcpy(png_buf[recv_buf.seq], recv_buf.buf, recv_buf.size);
-                    ++recv_num;
+                    arg->buf[recv_buf.seq] = malloc(recv_buf.size);
+                    memcpy(arg->buf[recv_buf.seq], recv_buf.buf, recv_buf.size);
+                    ++(*arg->recv_num);
                 } 
                 recv_buf_cleanup(&recv_buf);
                 recv_buf_init(&recv_buf, BUF_SIZE);
@@ -179,8 +165,82 @@ int main(int argc, char** argv)
         }
         recv_buf_cleanup(&recv_buf);
         curl_easy_cleanup(curl_handle);
-        catpng("all.png", png_buf, STRIP_NUM);
     }
+
+    return NULL;
+}
+
+int main(int argc, char** argv)
+{
+    /*default params */
+    int thread_num = 1;
+    int image_num = 1;
+    /*read params */
+    if(argc > 1)
+    {
+        for(int i = 1; i < argc; ++i)
+        {
+            if(strcmp(argv[i], "-t") == 0)
+            {
+                if(i+1 >= argc)
+                {
+                    printf("Parameter error.\n");
+                    return -1;
+                }
+                thread_num = strtol(argv[++i], NULL, 10);
+                if(thread_num < 1)
+                {
+                    printf("You must have at least 1 thread.\n");
+                    return -1;
+                }
+            }
+            else if(strcmp(argv[i], "-n") == 0 && i+1 < argc)
+            {
+                if(i+1 >= argc)
+                {
+                    printf("Parameter error.\n");
+                    return -1;
+                }
+                image_num = strtol(argv[++i], NULL, 10);
+                if(image_num < 1 || image_num > 3)
+                {
+                    printf("Image number incorrect.\n");
+                    return -2;
+                }
+            }
+        }
+    }
+
+    pthread_t *threads = malloc(sizeof(pthread_t) * thread_num);
+    char url[50] = {'\0'};
+    sprintf(url, base_url, "%d",image_num);
+
+    int server_num = 1;
+    char *png_buf[STRIP_NUM] = {NULL};
+    int recv_num = 0;
+
+    /* init for http call */
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    
+    for(size_t i = 0; i < thread_num; ++i)
+    {
+        /* create arguments */
+        THREAD_ARG arg;
+        arg.server_num = server_num;
+        round_increase(server_num, 3);
+        arg.url = url;
+        arg.recv_num = &recv_num;
+        arg.buf = png_buf;
+
+        pthread_create(&threads[i], NULL, curl_api_call, (void*) &arg);
+    }
+
+    for(size_t i = 0; i < thread_num; ++i)
+    {
+        pthread_join( threads[i], NULL);
+    }
+
+    catpng("all.png", png_buf, STRIP_NUM);
 
     /* clean up */
     for(int i = 0; i < STRIP_NUM; ++i)

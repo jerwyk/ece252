@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = -Wall -std=c99 -g # "curl-config --cflags" output is empty  
 LD = gcc
 LDFLAGS = -std=c99 -g 
-LDLIBS = -lcurl -lz # "curl-config --libs" output 
+LDLIBS = -lcurl -lz -pthread # "curl-config --libs" output 
 
 SRCS   = paster.c crc.c zutil.c util.c ../../com/png.c
 OBJS  = paster.o crc.o zutil.o util.o ../../com/png.o
