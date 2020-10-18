@@ -15,7 +15,7 @@
        __typeof__ (b) _b = (b); \
      _a > _b ? _a : _b; })
 
-const char* urls[3] = {"http://ece252-1.uwaterloo.ca:2520/image?img=2",
+const char* urls[3] = {"http://ece252-1.uwaterloo.ca:2520/image?img=1",
                        "http://ece252-2.uwaterloo.ca:2520/image?img=",
                        "http://ece252-3.uwaterloo.ca:2520/image?img="};
 
