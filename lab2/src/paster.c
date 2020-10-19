@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <curl/curl.h>
 #include <pthread.h>
-#include "../../com/png.h"
+#include "png.h"
 #include "util.h"
 
 #define ECE252_HEADER "X-Ece252-Fragment: "
