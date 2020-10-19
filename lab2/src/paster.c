@@ -144,6 +144,7 @@ void *curl_api_call(void *ptr)
         /* some servers requires a user-agent field */
         curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
+		/* request strips of image */
         while(*(arg->recv_num) < STRIP_NUM)
         {
             res = curl_easy_perform(curl_handle);
@@ -154,6 +155,7 @@ void *curl_api_call(void *ptr)
             }
             else
             {
+				/* write the image into the buffer if it is not there before */
                 if(arg->buf[recv_buf.seq] == NULL)
                 {
                     arg->buf[recv_buf.seq] = malloc(recv_buf.size);
@@ -178,7 +180,7 @@ int main(int argc, char** argv)
     /*default params */
     int thread_num = 1;
     int image_num = 1;
-    /*read params */
+    /*read params and error checking*/
     if(argc > 1)
     {
         for(int i = 1; i < argc; ++i)
@@ -224,6 +226,7 @@ int main(int argc, char** argv)
     int *recv_num = malloc(sizeof(int));
     *recv_num = 0;
     
+	/* spawn thread_num threads to request image strips in round robin fashion */
     for(size_t i = 0; i < thread_num; ++i)
     {
         /* create arguments */
@@ -237,12 +240,14 @@ int main(int argc, char** argv)
         thread_state[i] = pthread_create(&threads[i], NULL, curl_api_call, (void*) &arg);
     }
 
+	/* wait for threads to finish */
     for(size_t i = 0; i < thread_num; ++i)
     {
         if(thread_state[i] == 0)
             pthread_join( threads[i], NULL);
     }
-
+	
+	/* after all strips received, combine into all.png */
     catpng("all.png", png_buf, STRIP_NUM);
 
     /* clean up */
