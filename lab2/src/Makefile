@@ -1,5 +1,4 @@
 # Makefile, ECE252  
-# Yiqing Huang, 2018/11/02
 
 CC = gcc 
 CFLAGS = -Wall -std=c99 -g # "curl-config --cflags" output is empty  
@@ -7,8 +6,8 @@ LD = gcc
 LDFLAGS = -std=c99 -g 
 LDLIBS = -lcurl -lz -pthread # "curl-config --libs" output 
 
-SRCS   = paster.c crc.c zutil.c util.c ../../com/png.c
-OBJS  = paster.o crc.o zutil.o util.o ../../com/png.o
+SRCS   = paster.c crc.c zutil.c util.c png.c
+OBJS  = paster.o crc.o zutil.o util.o png.o
 TARGETS= paster
 
 all: ${TARGETS}

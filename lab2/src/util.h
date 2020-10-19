@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../com/png.h"
+#include "png.h"
 #include "crc.h"
 #include "zutil.h"
 
