@@ -42,7 +42,16 @@ int main(int argc, char** argv)
 
     int shmid = shmget(IPC_PRIVATE, B * sizeof(buffer_item_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 
-
+	for(int i = 1; i <= (P + C); ++i){
+		if(fork() == 0){
+			break;
+		}
+		if(i <= P){
+			producer();
+		}else if(i <= P + C){
+			consumer();
+		}
+    }
 
     curl_global_cleanup();
     return 0;
