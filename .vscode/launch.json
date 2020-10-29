@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "/home/jerwyk/Desktop/Stuff/ece252/lab2/src/paster",
-            "args": [],
+            "args": ["-t", "5", "-n", "2.99"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
