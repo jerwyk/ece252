@@ -4,7 +4,10 @@
 #include <curl/curl.h>
 #include <pthread.h>
 #include "png.h"
+#include "processes.h"
 //#include "util.h"
+
+
 
 #define ECE252_HEADER "X-Ece252-Fragment: "
 #define SERVER_NUM 3
@@ -12,13 +15,11 @@
 #define BUF_SIZE 1048576  /* 1024*1024 = 1M */
 #define BUF_INC  524288   /* 1024*512  = 0.5M */
 
-typedef struct thread_arg {
-    int server_num;
-    int *recv_num;
-    char **buf;
-    char *url;
-} THREAD_ARG;
-
+typedef struct buffer_item {
+    int seg_num;
+    int size;
+    char buf[1048576];
+} buffer_item_t;
 
 int main(int argc, char** argv)
 {
@@ -39,7 +40,9 @@ int main(int argc, char** argv)
     X = strtol(argv[4], NULL, 10);
     N = strtol(argv[5], NULL, 10);
 
-    
+    int shmid = shmget(IPC_PRIVATE, B * sizeof(buffer_item_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+
+
 
     curl_global_cleanup();
     return 0;

@@ -102,22 +102,23 @@ int recv_buf_cleanup(RECV_BUF *ptr)
     return 0;
 }
 
-void *curl_api_call(void *ptr)
+void p_producer(int num, int shm_id, int start, int end, pthread_mutex_t mutex, sem_t items, sem_t spaces)
 {
-    THREAD_ARG *arg = (THREAD_ARG*) ptr;
     CURL *curl_handle = NULL;
     CURLcode res;
+    int server = 1;
 
     RECV_BUF recv_buf;
     recv_buf_init(&recv_buf, BUF_SIZE);
 
     curl_handle = curl_easy_init();
-    char url_buf[50];
-    sprintf(url_buf, arg->url, arg->server_num);
+    char url_buf[256];
+    int seg = start;
+
+    //sprintf(url_buf, arg->url, arg->server_num);
     if(curl_handle) 
     {
         /* curl settings */
-        curl_easy_setopt(curl_handle, CURLOPT_URL, url_buf);
         /* register write call back function to process received data */
         curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, curl_write_data); 
         /* user defined data structure passed to the call back function */
@@ -132,8 +133,11 @@ void *curl_api_call(void *ptr)
         curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
 		/* request strips of image */
-        while(*(arg->recv_num) < STRIP_NUM)
+        while(seg < end)
         {
+            /* set url */
+            sprintf(url_buf, "http://ece252-%d.uwaterloo.ca:2530/image?img=%d&part=%d", server, num, seg);
+            curl_easy_setopt(curl_handle, CURLOPT_URL, url_buf);
             res = curl_easy_perform(curl_handle);
 
             if( res != CURLE_OK) 
@@ -151,6 +155,7 @@ void *curl_api_call(void *ptr)
                 } 
                 recv_buf_cleanup(&recv_buf);
                 recv_buf_init(&recv_buf, BUF_SIZE);
+                ++seg;
             }         
         }
         recv_buf_cleanup(&recv_buf);

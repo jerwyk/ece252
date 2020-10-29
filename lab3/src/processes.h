@@ -8,3 +8,4 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <curl/curl.h>
+#include <semaphore.h>
