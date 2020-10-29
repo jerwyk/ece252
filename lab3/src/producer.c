@@ -102,7 +102,7 @@ int recv_buf_cleanup(RECV_BUF *ptr)
     return 0;
 }
 
-void p_producer(int num, int shm_id, int start, int end, pthread_mutex_t mutex, sem_t items, sem_t spaces)
+void p_producer(int num, int shm_id, int start, int end, pthread_mutex_t *mutex, sem_t *items, sem_t *spaces)
 {
     CURL *curl_handle = NULL;
     CURLcode res;
@@ -147,12 +147,15 @@ void p_producer(int num, int shm_id, int start, int end, pthread_mutex_t mutex, 
             else
             {
 				/* write the image into the buffer if it is not there before */
-                if(arg->buf[recv_buf.seq] == NULL)
-                {
-                    arg->buf[recv_buf.seq] = malloc(recv_buf.size);
-                    memcpy(arg->buf[recv_buf.seq], recv_buf.buf, recv_buf.size);
-                    ++(*arg->recv_num);
-                } 
+                /* block if no spaces are avialable */       
+                buffer_item_t item;
+                item.size = recv_buf.size;
+                item.seg_num = recv_buf.seq;
+                memcpy(item.buf, recv_buf.buf, recv_buf.size);
+                /* critical section */
+                sem_wait(spaces);
+                pthread_mutex_lock(mutex);
+
                 recv_buf_cleanup(&recv_buf);
                 recv_buf_init(&recv_buf, BUF_SIZE);
                 ++seg;

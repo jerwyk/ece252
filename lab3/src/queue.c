@@ -1,24 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "queue.h"
 
 #define BUF_SIZE 1048576  /* 1024*1024 = 1M */
 #define BUF_INC  524288   /* 1024*512  = 0.5M */
 
-typedef struct buffer_queue {
-    int head;
-    int tail;
-    int size;
-    buffer_item_t *items;
-} buffer_queue_t;
-
-typedef struct buffer_item {
-    int seg_num;
-    int size;
-    char buf[1048576];
-} buffer_item_t;
-
-
+#define round_increase(a, max) a = (a + 1) % max
 
 /* a queue that can hold integers */
 /* Note this structure can be used by shared memory,
@@ -73,8 +61,8 @@ int init_shm_queue(buffer_queue_t *p, int queue_size)
     }
 
     p->size = queue_size;
-    p->head  = -1;
-    p->tail = -1;
+    p->head  = 0;
+    p->tail = 0;
     p->items = (buffer_item_t *) (p + sizeof(buffer_queue_t));
     return 0;
 }
@@ -104,8 +92,8 @@ buffer_queue_t *create_queue(int size)
         char *p = (char *)pqueue;
         pqueue->items = (buffer_item_t *) (p + sizeof(buffer_queue_t));
         pqueue->size = size;
-        pqueue->head = -1;
-        pqueue->tail = -1;
+        pqueue->head = 0;
+        pqueue->tail = 0;
     }
 
     return pqueue;
@@ -134,7 +122,7 @@ int is_full(buffer_queue_t *p)
     if ( p == NULL ) {
         return 0;
     }
-    return ( p->pos == (p->size -1) );
+    return ((p->tail + 1) % p->size == (p->head));
 }
 
 /**
@@ -148,7 +136,7 @@ int is_empty(buffer_queue_t *p)
     if ( p == NULL ) {
         return 0;
     }
-    return ( p->pos == -1 );
+    return ( p->head == p->tail );
 }
 
 /**
@@ -158,15 +146,15 @@ int is_empty(buffer_queue_t *p)
  * @return 0 on success; non-zero otherwise
  */
 
-int push(buffer_queue_t *p, int item)
+int enqueue(buffer_queue_t *p, buffer_item_t *item)
 {
     if ( p == NULL ) {
         return -1;
     }
 
     if ( !is_full(p) ) {
-        ++(p->pos);
-        p->items[p->pos] = item;
+        round_increase(p->tail, p->size);
+        memcpy(p->items + p->tail, item, sizeof(buffer_item_t));
         return 0;
     } else {
         return -1;
@@ -181,15 +169,15 @@ int push(buffer_queue_t *p, int item)
  * @return 0 on success; non-zero otherwise
  */
 
-int pop(buffer_queue_t *p, int *p_item)
+int dequeue(buffer_queue_t *p, buffer_item_t *p_item)
 {
     if ( p == NULL ) {
         return -1;
     }
 
     if ( !is_empty(p) ) {
-        *p_item = p->items[p->pos];
-        (p->pos)--;
+        *p_item = p->items[p->head];
+        round_increase(p->head, p->size);
         return 0;
     } else {
         return 1;

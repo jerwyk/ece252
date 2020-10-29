@@ -9,3 +9,4 @@
 #include <sys/stat.h>
 #include <curl/curl.h>
 #include <semaphore.h>
+#include "queue.h"
