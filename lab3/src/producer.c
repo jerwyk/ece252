@@ -2,6 +2,7 @@
 
 
 #define ECE252_HEADER "X-Ece252-Fragment: "
+#define SERVER_NUM 3
 #define BUF_SIZE 1048576  /* 1024*1024 = 1M */
 #define BUF_INC  524288   /* 1024*512  = 0.5M */
 
@@ -102,7 +103,7 @@ int recv_buf_cleanup(RECV_BUF *ptr)
     return 0;
 }
 
-void p_producer(int num, int shm_id, int start, int end, pthread_mutex_t *mutex, sem_t *items, sem_t *spaces)
+void p_producer(int num, int shmid, int start, int end, pthread_mutex_t *mutex, sem_t *items, sem_t *spaces)
 {
     CURL *curl_handle = NULL;
     CURLcode res;
@@ -114,6 +115,9 @@ void p_producer(int num, int shm_id, int start, int end, pthread_mutex_t *mutex,
     curl_handle = curl_easy_init();
     char url_buf[256];
     int seg = start;
+
+    /* get shared memory */
+    buffer_queue_t *queue = (buffer_queue_t *)shmat(shmid, NULL, 0);
 
     //sprintf(url_buf, arg->url, arg->server_num);
     if(curl_handle) 
@@ -137,6 +141,7 @@ void p_producer(int num, int shm_id, int start, int end, pthread_mutex_t *mutex,
         {
             /* set url */
             sprintf(url_buf, "http://ece252-%d.uwaterloo.ca:2530/image?img=%d&part=%d", server, num, seg);
+            round_increase(server);
             curl_easy_setopt(curl_handle, CURLOPT_URL, url_buf);
             res = curl_easy_perform(curl_handle);
 
@@ -155,6 +160,11 @@ void p_producer(int num, int shm_id, int start, int end, pthread_mutex_t *mutex,
                 /* critical section */
                 sem_wait(spaces);
                 pthread_mutex_lock(mutex);
+
+                enqueue(queue, &item);
+
+                pthread_mutex_unlock(mutex);
+                sem_post(items);
 
                 recv_buf_cleanup(&recv_buf);
                 recv_buf_init(&recv_buf, BUF_SIZE);
