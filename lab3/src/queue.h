@@ -10,6 +10,7 @@ typedef struct buffer_queue {
     int head;
     int tail;
     int size;
+	int counter;
     buffer_item_t *items;
 } buffer_queue_t;
 

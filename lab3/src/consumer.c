@@ -23,23 +23,23 @@ void p_consumer(int X, int shmid, int consumer_shmid, int process_number, int to
 	buffer_queue_t* queue = shmat(shmid, NULL, 0);
 	void* png_buffer = shmat(consumer_shmid, NULL, 0);
 	
-	int status, exit;
-	int local_counter = STRIP_COUNT;
+	int status;
 	
-	while(local_counter > 0 && !exit){
+	while(local_counter > 0 || !exit){
 		/* reading image segment */
 		buffer_item_t* item = malloc(sizeof(buffer_item_t));
 		
 		/* critical section */
 		pthread_mutex_lock(mutex);
-		local_counter = queue->counter;
-		if(local_counter > 0){
+		;
+		if(queue->counter > 0){
 			sem_wait(items);
 				dequeue(queue, item);
 				--(queue->counter);
 			sem_post(spaces);
 		}else{
-			exit = 1;
+			free(item);
+			break;
 		}
 		pthread_mutex_unlock(mutex);
 		
