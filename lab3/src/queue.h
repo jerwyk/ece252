@@ -1,20 +1,17 @@
 #pragma once
 
-struct buffer_queue {
+typedef struct buffer_item {
+    int seg_num;
+    int size;
+    char buf[1048576];
+} buffer_item_t;
+
+typedef struct buffer_queue {
     int head;
     int tail;
     int size;
     buffer_item_t *items;
-};
-
-struct buffer_item {
-    int seg_num;
-    int size;
-    char buf[1048576];
-};
-
-typedef struct buffer_item buffer_item_t;
-typedef struct buffer_queue buffer_queue_t;
+} buffer_queue_t;
 
 int sizeof_shm_queue(int size);
 int init_shm_queue(buffer_queue_t *p, int queue_size);
