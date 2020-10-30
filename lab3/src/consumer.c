@@ -71,7 +71,7 @@ void p_consumer(int X, int shmid, int consumer_shmid, int process_number, int to
 		
 		/* copying data to shared memory */
 		/* not a critical section becasue it always writes to a different area of memory */
-		memcpy(png_buffer + item->seg_num * STRIP_SIZE, &inflated_IDAT_buffer, BUFFER_SIZE);
+		memcpy(png_buffer + item->seg_num * BUFFER_SIZE, &inflated_IDAT_buffer, BUFFER_SIZE);
 		
 		/* free memory and detach shared memory */
 		free(item);
