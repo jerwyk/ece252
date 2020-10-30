@@ -37,15 +37,20 @@ int main(int argc, char** argv)
 	queue_init->counter = STRIP_COUNT;
 	
     pthread_mutex_t *mutex;
+    pthread_mutexattr_t attrmutex;
+    /* Initialise attribute to mutex. */
+    pthread_mutexattr_init(&attrmutex);
+    pthread_mutexattr_setpshared(&attrmutex, PTHREAD_PROCESS_SHARED);
+    pthread_mutex_init(mutex, &attrmutex);
+
     sem_t *items, *spaces;
-    pthread_mutex_init(mutex, NULL);
     sem_init(items, SEM_PROC, B);
     sem_init(spaces, SEM_PROC, B);
 
 	for(int i = 1; i <= (P + C); ++i){
 		if(fork() != 0){
             if(i <= P){
-                p_producer(N, shmid, 0, 0, mutex, items, spaces);
+                p_producer(N, shmid, mutex, items, spaces);
                 break;
             }else if(i <= (P + C)){
                 p_consumer(X, shmid, consumer_shmid, mutex, items, spaces);
