@@ -9,6 +9,7 @@
 #define SEM_PROC 1
 #define IMAGE_WIDTH 400
 #define IMAGE_HEIGHT 300
+#define STRIP_COUNT 50
 
 int main(int argc, char** argv)
 {
@@ -32,6 +33,9 @@ int main(int argc, char** argv)
     int shmid = shmget(IPC_PRIVATE, B * sizeof(buffer_item_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 	int consumer_shmid = shmget(IPC_PRIVATE, IMAGE_HEIGHT * (IMAGE_WIDTH * 4 + 1), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 	
+	buffer_queue_t* queue_init = shmat(shmid, NULL, 0);
+	queue_init->counter = STRIP_COUNT;
+	
     pthread_mutex_t *mutex;
     sem_t *items, *spaces;
     pthread_mutex_init(mutex, NULL);
@@ -44,7 +48,7 @@ int main(int argc, char** argv)
 		}
 		if(i <= P){
 			p_producer(N, shmid, 0, 0, mutex, items, spaces);
-		}else if(i <= P + C){
+		}else if(i <= (P + C)){
 			p_consumer(X, shmid, consumer_shmid, mutex, items, spaces);
 		}
     }
