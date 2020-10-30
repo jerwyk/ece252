@@ -43,14 +43,15 @@ int main(int argc, char** argv)
     sem_init(spaces, SEM_PROC, B);
 
 	for(int i = 1; i <= (P + C); ++i){
-		if(fork() == 0){
-			break;
-		}
-		if(i <= P){
-			p_producer(N, shmid, 0, 0, mutex, items, spaces);
-		}else if(i <= (P + C)){
-			p_consumer(X, shmid, consumer_shmid, mutex, items, spaces);
-		}
+		if(fork() != 0){
+            if(i <= P){
+                p_producer(N, shmid, 0, 0, mutex, items, spaces);
+                break;
+            }else if(i <= (P + C)){
+                p_consumer(X, shmid, consumer_shmid, mutex, items, spaces);
+                break;
+            }
+        }
     }
 
 	shmctl(consumer_shmid, IPC_RMID, NULL);

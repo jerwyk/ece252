@@ -158,13 +158,13 @@ void p_producer(int num, int shmid, int start, int end, pthread_mutex_t *mutex, 
                 item.seg_num = recv_buf.seq;
                 memcpy(item.buf, recv_buf.buf, recv_buf.size);
                 /* critical section */
-                sem_wait(spaces);
                 pthread_mutex_lock(mutex);
+                sem_wait(spaces);
 
                 enqueue(queue, &item);
 
-                pthread_mutex_unlock(mutex);
                 sem_post(items);
+                pthread_mutex_unlock(mutex);           
 
                 recv_buf_cleanup(&recv_buf);
                 recv_buf_init(&recv_buf, BUF_SIZE);
