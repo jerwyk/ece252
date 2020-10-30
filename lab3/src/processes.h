@@ -13,4 +13,4 @@
 #include "queue.h"
 
 void p_producer(int num, int shmid, int start, int end, pthread_mutex_t *mutex, sem_t *items, sem_t *spaces);
-void consumer(int X, int shmid, int consumer_shmid);
+void p_consumer(int X, int shmid, int consumer_shmid, pthread_mutex_t *mutex, sem_t *items, sem_t *spaces);
