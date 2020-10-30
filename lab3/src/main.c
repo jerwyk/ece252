@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <curl/curl.h>
 #include <pthread.h>
 #include "png.h"
@@ -30,11 +31,11 @@ int main(int argc, char** argv)
     X = strtol(argv[4], NULL, 10);
     N = strtol(argv[5], NULL, 10);
 
-    int shmid = shmget(IPC_PRIVATE, B * sizeof(buffer_item_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    int shmid = shmget(IPC_PRIVATE, sizeof_shm_queue(B), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 	int consumer_shmid = shmget(IPC_PRIVATE, IMAGE_HEIGHT * (IMAGE_WIDTH * 4 + 1), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 	
 	buffer_queue_t* queue_init = shmat(shmid, NULL, 0);
-	queue_init->counter = STRIP_COUNT;
+	init_shm_queue(queue_init, B);
 	
     pthread_mutex_t *mutex;
     pthread_mutexattr_t attrmutex;
@@ -48,7 +49,7 @@ int main(int argc, char** argv)
     sem_init(spaces, SEM_PROC, B);
 
 	for(int i = 1; i <= (P + C); ++i){
-		if(fork() != 0){
+		if(ork() != 0){
             if(i <= P){
                 p_producer(N, shmid, mutex, items, spaces);
                 break;
@@ -59,8 +60,14 @@ int main(int argc, char** argv)
         }
     }
 
+    /* wait for all child to exit */
+    pid_t wpid;
+    while ((wpid = wait(NULL)) > 0);
+
+    destroy_queue(queue_init);
 	shmctl(consumer_shmid, IPC_RMID, NULL);
 	shmctl(shmid, IPC_RMID, NULL);
+    pthread_mutex_destroy(mutex);
     curl_global_cleanup();
     return 0;
 }

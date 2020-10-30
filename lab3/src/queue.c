@@ -63,6 +63,8 @@ int init_shm_queue(buffer_queue_t *p, int queue_size)
     p->size = queue_size;
     p->head  = 0;
     p->tail = 0;
+    p->prod_index = 0;
+    p->counter = 50;
     p->items = (buffer_item_t *) (p + sizeof(buffer_queue_t));
     return 0;
 }
