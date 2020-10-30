@@ -6,8 +6,9 @@
 #include "png.h"
 #include "processes.h"
 
-#define STRIP_NUM 50
 #define SEM_PROC 1
+#define IMAGE_WIDTH 400
+#define IMAGE_HEIGHT 300
 
 int main(int argc, char** argv)
 {
@@ -29,6 +30,8 @@ int main(int argc, char** argv)
     N = strtol(argv[5], NULL, 10);
 
     int shmid = shmget(IPC_PRIVATE, B * sizeof(buffer_item_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+	int consumer_shmid = shmget(IPC_PRIVATE, IMAGE_HEIGHT * (IMAGE_WIDTH * 4 + 1), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+	/* TODO: find out what size lmao */
     pthread_mutex_t *mutex;
     sem_t *items, *spaces;
     pthread_mutex_init(mutex, NULL);
@@ -42,10 +45,12 @@ int main(int argc, char** argv)
 		if(i <= P){
 			p_producer(N, shmid, 0, 0, mutex, items, spaces);
 		}else if(i <= P + C){
-			consumer();
+			consumer(X, shmid, consumer_shmid);
 		}
     }
 
+	shmctl(consumer_shmid);
+	shmctl(shmid);
     curl_global_cleanup();
     return 0;
 }

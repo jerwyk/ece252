@@ -19,10 +19,7 @@
 
 #define round_increase(a) a = (a % SERVER_NUM) + 1
 
-/* function declearations */
-void consumer(int X, int shmid);
-
-void consumer(int X, int shmid)){
+void consumer(int X, int shmid, int consumer_shmid){
 	/* attach shared memory */
 	buffer_queue_t* queue = shmat(shmid, NULL, 0);
 	void* owo_p = shmat(consumer_shmid, NULL, 0);
@@ -46,7 +43,7 @@ void consumer(int X, int shmid)){
 	}
 	
 	/* inflating IDAT data */
-	simple_png_p* png_image = init_simple_png();
+	simple_png_p png_image = init_simple_png();
 	status = parse_simple_png(png_image, item->buf);
 	if(status != 0){
 		printf("Error: parsing png failed\n");
