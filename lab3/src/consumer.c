@@ -24,14 +24,14 @@ void p_consumer(int X, int shmid, int consumer_shmid, int process_number, int to
 	void* png_buffer = shmat(consumer_shmid, NULL, 0);
 	
 	int status;
+	int exit = 0;
 	
-	while(local_counter > 0 || !exit){
+	while(!exit){
 		/* reading image segment */
 		buffer_item_t* item = malloc(sizeof(buffer_item_t));
 		
 		/* critical section */
 		pthread_mutex_lock(mutex);
-		;
 		if(queue->counter > 0){
 			sem_wait(items);
 				dequeue(queue, item);
@@ -39,9 +39,13 @@ void p_consumer(int X, int shmid, int consumer_shmid, int process_number, int to
 			sem_post(spaces);
 		}else{
 			free(item);
-			break;
+			exit = 1;
 		}
 		pthread_mutex_unlock(mutex);
+		
+		if(exit){
+			break;
+		}
 		
 		/* sleep for X milliseconds */
 		usleep(X * 1000);
