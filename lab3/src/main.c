@@ -32,7 +32,7 @@ int main(int argc, char** argv)
 
     int shmid = shmget(IPC_PRIVATE, B * sizeof(buffer_item_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
 	int consumer_shmid = shmget(IPC_PRIVATE, IMAGE_HEIGHT * (IMAGE_WIDTH * 4 + 1), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
-	/* TODO: find out what size lmao */
+	
     pthread_mutex_t *mutex;
     sem_t *items, *spaces;
     pthread_mutex_init(mutex, NULL);
@@ -50,12 +50,12 @@ int main(int argc, char** argv)
 			p_producer(N, shmid, prod_start, prod_start + prod_num, mutex, items, spaces);
             prod_start = prod_start + prod_num > STRIP_NUM ? STRIP_NUM : prod_start + prod_num;
 		}else if(i <= P + C){
-			consumer(X, shmid, consumer_shmid);
+			p_consumer(X, shmid, consumer_shmid, mutex, items, spaces);
 		}
     }
 
-	shmctl(consumer_shmid);
-	shmctl(shmid);
+	shmctl(consumer_shmid, IPC_RMID, NULL);
+	shmctl(shmid, IPC_RMID, NULL);
     curl_global_cleanup();
     return 0;
 }
