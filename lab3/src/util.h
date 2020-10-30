@@ -10,4 +10,4 @@
 * @param pngs the png images to be concatenated
 * @param num the number of images
 */
-int catpng(const char* dest, char **pngs, size_t num);
+int squeeze(const char* dest, uint8_t* buffer);
