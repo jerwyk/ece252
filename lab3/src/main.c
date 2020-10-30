@@ -9,6 +9,7 @@
 #define SEM_PROC 1
 #define IMAGE_WIDTH 400
 #define IMAGE_HEIGHT 300
+#define STRIP_NUM 50
 
 int main(int argc, char** argv)
 {
@@ -38,12 +39,16 @@ int main(int argc, char** argv)
     sem_init(items, SEM_PROC, B);
     sem_init(spaces, SEM_PROC, B);
 
+    int prod_start = 0;
+    int prod_num = (STRIP_NUM / P) + 1;
+
 	for(int i = 1; i <= (P + C); ++i){
 		if(fork() == 0){
 			break;
 		}
 		if(i <= P){
-			p_producer(N, shmid, 0, 0, mutex, items, spaces);
+			p_producer(N, shmid, prod_start, prod_start + prod_num, mutex, items, spaces);
+            prod_start = prod_start + prod_num > STRIP_NUM ? STRIP_NUM : prod_start + prod_num;
 		}else if(i <= P + C){
 			consumer(X, shmid, consumer_shmid);
 		}
