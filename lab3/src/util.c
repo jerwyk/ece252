@@ -8,7 +8,7 @@ int squeeze(const char* dest, uint8_t* buffer){ /* buffer is the uncompressed da
 	uint8_t dest_buffer[BUFFER_LENGTH]; /* buffer for compressed data */
 
 	/* data compression */
-    status = mem_def(dest_buffer, &compressed_length, *buffer, BUFFER_LENGTH, Z_DEFAULT_COMPRESSION);
+    int status = mem_def(dest_buffer, &compressed_length, buffer, BUFFER_LENGTH, Z_DEFAULT_COMPRESSION);
 	if(status != 0){
 			printf("Compression error %d\n", status);
 			return status;

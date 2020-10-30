@@ -142,7 +142,7 @@ void p_producer(int num, int shmid, pthread_mutex_t *mutex, sem_t *items, sem_t 
         {
             pthread_mutex_lock(mutex);
             {
-                seg = ++(queue->prod_index);
+                seg = (queue->prod_index)++;
             }
             pthread_mutex_unlock(mutex);
 
@@ -167,13 +167,13 @@ void p_producer(int num, int shmid, pthread_mutex_t *mutex, sem_t *items, sem_t 
                     item.seg_num = recv_buf.seq;
                     memcpy(item.buf, recv_buf.buf, recv_buf.size);
                     /* critical section */
-                    pthread_mutex_lock(mutex);
                     sem_wait(spaces);
+                    pthread_mutex_lock(mutex);            
                     {
                         enqueue(queue, &item);
                     }
+                    pthread_mutex_unlock(mutex);    
                     sem_post(items);
-                    pthread_mutex_unlock(mutex);           
 
                     recv_buf_cleanup(&recv_buf);
                     recv_buf_init(&recv_buf, BUF_SIZE);
@@ -189,5 +189,7 @@ void p_producer(int num, int shmid, pthread_mutex_t *mutex, sem_t *items, sem_t 
         curl_easy_cleanup(curl_handle);
     }
 
-    return NULL;
+    shmdt(queue);
+
+    return;
 }

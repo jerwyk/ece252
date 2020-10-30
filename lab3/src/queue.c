@@ -61,8 +61,8 @@ int init_shm_queue(buffer_queue_t *p, int queue_size)
     }
 
     p->size = queue_size;
-    p->head  = 0;
-    p->tail = 0;
+    p->head  = -1;
+    p->tail = -1;
     p->prod_index = 0;
     p->counter = 50;
     p->items = (buffer_item_t *) (p + sizeof(buffer_queue_t));
@@ -94,8 +94,8 @@ buffer_queue_t *create_queue(int size)
         char *p = (char *)pqueue;
         pqueue->items = (buffer_item_t *) (p + sizeof(buffer_queue_t));
         pqueue->size = size;
-        pqueue->head = 0;
-        pqueue->tail = 0;
+        pqueue->head = -1;
+        pqueue->tail = -1;
     }
 
     return pqueue;
@@ -138,7 +138,7 @@ int is_empty(buffer_queue_t *p)
     if ( p == NULL ) {
         return 0;
     }
-    return ( p->head == p->tail );
+    return ( p->head == -1 && p->tail == -1);
 }
 
 /**
@@ -156,7 +156,8 @@ int enqueue(buffer_queue_t *p, buffer_item_t *item)
 
     if ( !is_full(p) ) {
         round_increase(p->tail, p->size);
-        memcpy(p->items + p->tail, item, sizeof(buffer_item_t));
+        p->head == -1 ? p->head++ : 0;
+        memcpy(&p->items[p->tail], item, sizeof(buffer_item_t));
         return 0;
     } else {
         return -1;
@@ -178,8 +179,17 @@ int dequeue(buffer_queue_t *p, buffer_item_t *p_item)
     }
 
     if ( !is_empty(p) ) {
-        *p_item = p->items[p->head];
-        round_increase(p->head, p->size);
+        memcpy(p_item, &p->items[p->head], sizeof(buffer_item_t));
+        if(p->head == p->tail)
+        {
+            p->head = -1;
+            p->tail = -1;
+        }
+        else
+        {
+            round_increase(p->head, p->size);
+        }
+        
         return 0;
     } else {
         return 1;
