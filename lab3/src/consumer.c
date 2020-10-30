@@ -18,7 +18,7 @@
 
 #define round_increase(a) a = (a % SERVER_NUM) + 1
 
-void p_consumer(int X, int shmid, int consumer_shmid, int process_number, int total_process, pthread_mutex_t *mutex, sem_t *items, sem_t *spaces){
+void p_consumer(int X, int shmid, int consumer_shmid, pthread_mutex_t *mutex, sem_t *items, sem_t *spaces){
 	/* attach shared memory */
 	buffer_queue_t* queue = shmat(shmid, NULL, 0);
 	void* png_buffer = shmat(consumer_shmid, NULL, 0);
