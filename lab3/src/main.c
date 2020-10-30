@@ -5,9 +5,9 @@
 #include <pthread.h>
 #include "png.h"
 #include "processes.h"
-//#include "util.h"
 
 #define STRIP_NUM 50
+#define SEM_PROC 1
 
 int main(int argc, char** argv)
 {
@@ -29,13 +29,18 @@ int main(int argc, char** argv)
     N = strtol(argv[5], NULL, 10);
 
     int shmid = shmget(IPC_PRIVATE, B * sizeof(buffer_item_t), IPC_CREAT | IPC_EXCL | S_IRUSR | S_IWUSR);
+    pthread_mutex_t *mutex;
+    sem_t *items, *spaces;
+    pthread_mutex_init(mutex, NULL);
+    sem_init(items, SEM_PROC, B);
+    sem_init(spaces, SEM_PROC, B);
 
 	for(int i = 1; i <= (P + C); ++i){
 		if(fork() == 0){
 			break;
 		}
 		if(i <= P){
-			producer();
+			p_producer(N, shmid, 0, 0, mutex, items, spaces);
 		}else if(i <= P + C){
 			consumer();
 		}
