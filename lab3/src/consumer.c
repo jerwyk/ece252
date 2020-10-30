@@ -25,10 +25,10 @@ void p_consumer(int X, int shmid, int consumer_shmid, int process_number, int to
 	
 	int status;
 	int exit = 0;
+	buffer_item_t* item = malloc(sizeof(buffer_item_t));
 	
 	while(!exit){
 		/* reading image segment */
-		buffer_item_t* item = malloc(sizeof(buffer_item_t));
 		
 		/* critical section */
 		pthread_mutex_lock(mutex);
@@ -38,7 +38,6 @@ void p_consumer(int X, int shmid, int consumer_shmid, int process_number, int to
 				--(queue->counter);
 			sem_post(spaces);
 		}else{
-			free(item);
 			exit = 1;
 		}
 		pthread_mutex_unlock(mutex);
@@ -76,10 +75,10 @@ void p_consumer(int X, int shmid, int consumer_shmid, int process_number, int to
 		/* copying data to shared memory */
 		/* not a critical section becasue it always writes to a different area of memory */
 		memcpy(png_buffer + item->seg_num * BUFFER_SIZE, &inflated_IDAT_buffer, BUFFER_SIZE);
-		
-		/* free memory and detach shared memory */
-		free(item);
 	}
+	
+	/* freeing dynamically allocated memory and detaching from shared memory */
+	free(item);
 	shmdt(png_buffer);
 	shmdt(queue);
 	return;
