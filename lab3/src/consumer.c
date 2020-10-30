@@ -73,6 +73,8 @@ void p_consumer(int X, int shmid, int consumer_shmid, pthread_mutex_t *mutex,pth
 			return;
 		}
 
+		free_simple_png(png_image);
+
 	}
 	
 	/* freeing dynamically allocated memory and detaching from shared memory */

@@ -74,9 +74,11 @@ int main(int argc, char** argv)
 		if(fork() == 0){
             if(i <= P){
                 p_producer(N, shmid, &sems->mutex, &sems->items, &sems->spaces);
+                curl_global_cleanup();
                 exit(0);
             }else if(i <= (P + C)){
                 p_consumer(X, shmid, consumer_shmid, &sems->mutex, &sems->con_mutex, &sems->items, &sems->spaces);
+                curl_global_cleanup();
                 exit(0);
             }
         }
