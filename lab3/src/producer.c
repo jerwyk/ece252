@@ -103,7 +103,7 @@ int recv_buf_cleanup(RECV_BUF *ptr)
     return 0;
 }
 
-void p_producer(int num, int shmid, int start, int end, pthread_mutex_t *mutex, sem_t *items, sem_t *spaces)
+void p_producer(int num, int shmid, pthread_mutex_t *mutex, sem_t *items, sem_t *spaces)
 {
     CURL *curl_handle = NULL;
     CURLcode res;
@@ -114,7 +114,8 @@ void p_producer(int num, int shmid, int start, int end, pthread_mutex_t *mutex, 
 
     curl_handle = curl_easy_init();
     char url_buf[256];
-    int seg = start;
+    int seg = 0;
+    int quit = 0;
 
     /* get shared memory */
     buffer_queue_t *queue = (buffer_queue_t *)shmat(shmid, NULL, 0);
@@ -137,39 +138,52 @@ void p_producer(int num, int shmid, int start, int end, pthread_mutex_t *mutex, 
         curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 
 		/* request strips of image */
-        while(seg < end)
+        while(!quit)
         {
-            /* set url */
-            sprintf(url_buf, "http://ece252-%d.uwaterloo.ca:2530/image?img=%d&part=%d", server, num, seg);
-            round_increase(server);
-            curl_easy_setopt(curl_handle, CURLOPT_URL, url_buf);
-            res = curl_easy_perform(curl_handle);
-
-            if( res != CURLE_OK) 
+            pthread_mutex_lock(mutex);
             {
-                fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+                seg = ++(queue->prod_index);
+            }
+            pthread_mutex_unlock(mutex);
+
+            if(seg < 50)
+            {
+                /* set url */
+                sprintf(url_buf, "http://ece252-%d.uwaterloo.ca:2530/image?img=%d&part=%d", server, num, seg);
+                round_increase(server);
+                curl_easy_setopt(curl_handle, CURLOPT_URL, url_buf);
+                res = curl_easy_perform(curl_handle);
+
+                if( res != CURLE_OK) 
+                {
+                    fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+                }
+                else
+                {
+                    /* write the image into the buffer if it is not there before */
+                    /* block if no spaces are avialable */       
+                    buffer_item_t item;
+                    item.size = recv_buf.size;
+                    item.seg_num = recv_buf.seq;
+                    memcpy(item.buf, recv_buf.buf, recv_buf.size);
+                    /* critical section */
+                    pthread_mutex_lock(mutex);
+                    sem_wait(spaces);
+                    {
+                        enqueue(queue, &item);
+                    }
+                    sem_post(items);
+                    pthread_mutex_unlock(mutex);           
+
+                    recv_buf_cleanup(&recv_buf);
+                    recv_buf_init(&recv_buf, BUF_SIZE);
+                    ++seg;
+                }         
             }
             else
             {
-				/* write the image into the buffer if it is not there before */
-                /* block if no spaces are avialable */       
-                buffer_item_t item;
-                item.size = recv_buf.size;
-                item.seg_num = recv_buf.seq;
-                memcpy(item.buf, recv_buf.buf, recv_buf.size);
-                /* critical section */
-                pthread_mutex_lock(mutex);
-                sem_wait(spaces);
-
-                enqueue(queue, &item);
-
-                sem_post(items);
-                pthread_mutex_unlock(mutex);           
-
-                recv_buf_cleanup(&recv_buf);
-                recv_buf_init(&recv_buf, BUF_SIZE);
-                ++seg;
-            }         
+                quit = 1;
+            }
         }
         recv_buf_cleanup(&recv_buf);
         curl_easy_cleanup(curl_handle);

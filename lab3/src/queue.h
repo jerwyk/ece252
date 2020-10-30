@@ -11,6 +11,7 @@ typedef struct buffer_queue {
     int tail;
     int size;
 	int counter;
+    int prod_index;
     buffer_item_t *items;
 } buffer_queue_t;
 
