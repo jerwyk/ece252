@@ -19,7 +19,7 @@
 
 #define round_increase(a) a = (a % SERVER_NUM) + 1
 
-void consumer(int X, int shmid, int consumer_shmid){
+void p_consumer(int X, int shmid, int consumer_shmid, pthread_mutex_t *mutex, sem_t *items, sem_t *spaces){
 	/* attach shared memory */
 	buffer_queue_t* queue = shmat(shmid, NULL, 0);
 	void* owo_p = shmat(consumer_shmid, NULL, 0);
@@ -28,9 +28,14 @@ void consumer(int X, int shmid, int consumer_shmid){
 	
 	/* reading image segment */
 	buffer_item_t* item = malloc(sizeof(buffer_item_t));
-	if(is_empty(queue)){
-		dequeue(queue, item);
-	}
+	/* critical section */
+	sem_wait(items);
+	pthread_mutex_lock(mutex);
+	
+	dequeue(queue, item);
+	
+	pthread_mutex_unlock(mutex);
+	sem_post(spaces)
 	
 	/* sleep for X milliseconds */
 	usleep(X * 1000);
@@ -58,11 +63,11 @@ void consumer(int X, int shmid, int consumer_shmid){
 	}
 	
 	/* copying data to shared memory */
+	/* not a critical section becasue it always writes to a different area of memory */
 	memcpy(owo_p + item->seg_num * STRIP_SIZE, &inflated_IDAT_buffer, BUFFER_SIZE);
 	
 	/* free memory and detach shared memory */
 	free(item);
-	/* TODO: item should be only freed if it was malloc'd */
 	shmdt(queue);
 	return;
 }
