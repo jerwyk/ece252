@@ -12,6 +12,7 @@ typedef struct hsearch_data hashmap_t;
 
 hashmap_t visited_urls;
 hashmap_t visited_pngs;
+char *url_frontier;
 
 int main(int argc, char **argv)
 {
