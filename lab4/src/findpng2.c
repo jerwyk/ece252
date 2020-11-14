@@ -4,7 +4,9 @@
 #include <curl/curl.h>
 #include <pthread.h>
 #include <search.h>
+#include <semaphore.h>
 #include <sys/time.h>
+#include "util.h"
 #include "png.h"
 
 #define ECE252_HEADER "X-Ece252-Fragment: "
@@ -13,7 +15,15 @@ typedef struct hsearch_data hashmap_t;
 
 hashmap_t visited_urls;
 hashmap_t visited_pngs;
-char *url_frontier;
+struct url_queue_t url_frontier;
+
+pthread_rwlock_t rw_urls;
+pthread_rwlock_t rw_pngs;
+pthread_mutex_t mutex;
+pthread_mutex_t file_mutex;
+semt_t sem_frontier;
+volatile int num_pngs;
+
 
 int main(int argc, char **argv)
 {
@@ -60,6 +70,13 @@ int main(int argc, char **argv)
 
     /* initializations */
     curl_global_init(CURL_GLOBAL_DEFAULT);
+    hcreate_r(2000, &visited_urls);
+    hcreate_r(image_num, &visited_pngs);
+    url_entry_t *seed = (url_entry_t *)malloc(sizeof(url_entry_t));
+    strcpy(seed->text, seed_url);
+
+    TAILQ_INIT(&url_frontier);
+    TAILQ_INSERT_TAIL(&url_frontier, seed, pointers);
 	
     /* create threads to crawl the web */
 	pthread_t* threads = malloc(sizeof(pthread_t) * thread_num);

@@ -5,10 +5,19 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <curl/curl.h>
+#include <sys/queue.h> 
 #include <libxml/HTMLparser.h>
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <libxml/uri.h>
+
+typedef struct _url_entry
+{
+    char url[255];
+    TAILQ_ENTRY(_url_entry) pointers;
+} url_entry_t;
+
+TAILQ_HEAD(url_queue_t, url_entry_t);
 
 htmlDocPtr mem_getdoc(char *buf, int size, const char *url);
 xmlXPathObjectPtr getnodeset (xmlDocPtr doc, xmlChar *xpath);
