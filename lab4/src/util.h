@@ -11,13 +11,21 @@
 #include <libxml/xpath.h>
 #include <libxml/uri.h>
 
+typedef struct recv_buf2 {
+    char *buf;       /* memory to hold a copy of received data */
+    size_t size;     /* size of valid data in buf in bytes*/
+    size_t max_size; /* max capacity of buf in bytes*/
+    int seq;         /* >=0 sequence number extracted from http header */
+                     /* <0 indicates an invalid seq number */
+} RECV_BUF;
+
 typedef struct _url_entry
 {
     char url[255];
-    TAILQ_ENTRY(_url_entry) pointers;
+    STAILQ_ENTRY(_url_entry) pointers;
 } url_entry_t;
 
-TAILQ_HEAD(url_queue_t, url_entry_t);
+STAILQ_HEAD(url_queue_t, url_entry_t);
 
 htmlDocPtr mem_getdoc(char *buf, int size, const char *url);
 xmlXPathObjectPtr getnodeset (xmlDocPtr doc, xmlChar *xpath);
@@ -29,4 +37,3 @@ int recv_buf_cleanup(RECV_BUF *ptr);
 void cleanup(CURL *curl, RECV_BUF *ptr);
 int write_file(const char *path, const void *in, size_t len);
 CURL *easy_handle_init(RECV_BUF *ptr, const char *url);
-int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf);

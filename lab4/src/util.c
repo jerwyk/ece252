@@ -45,14 +45,6 @@
        __typeof__ (b) _b = (b); \
      _a > _b ? _a : _b; })
 
-typedef struct recv_buf2 {
-    char *buf;       /* memory to hold a copy of received data */
-    size_t size;     /* size of valid data in buf in bytes*/
-    size_t max_size; /* max capacity of buf in bytes*/
-    int seq;         /* >=0 sequence number extracted from http header */
-                     /* <0 indicates an invalid seq number */
-} RECV_BUF;
-
 htmlDocPtr mem_getdoc(char *buf, int size, const char *url)
 {
     int opts = HTML_PARSE_NOBLANKS | HTML_PARSE_NOERROR | \
@@ -335,74 +327,4 @@ CURL *easy_handle_init(RECV_BUF *ptr, const char *url)
     curl_easy_setopt(curl_handle, CURLOPT_HTTPAUTH, CURLAUTH_ANY);
 
     return curl_handle;
-}
-
-int process_html(CURL *curl_handle, RECV_BUF *p_recv_buf)
-{
-    char fname[256];
-    int follow_relative_link = 1;
-    char *url = NULL; 
-    pid_t pid =getpid();
-
-    curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
-    find_http(p_recv_buf->buf, p_recv_buf->size, follow_relative_link, url); 
-    sprintf(fname, "./output_%d.html", pid);
-    return write_file(fname, p_recv_buf->buf, p_recv_buf->size);
-}
-
-int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
-{
-    pid_t pid =getpid();
-    char fname[256];
-    char *eurl = NULL;          /* effective URL */
-    curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &eurl);
-    if ( eurl != NULL) {
-        printf("The PNG url is: %s\n", eurl);
-    }
-
-    sprintf(fname, "./output_%d_%d.png", p_recv_buf->seq, pid);
-    return write_file(fname, p_recv_buf->buf, p_recv_buf->size);
-}
-/**
- * @brief process teh download data by curl
- * @param CURL *curl_handle is the curl handler
- * @param RECV_BUF p_recv_buf contains the received data. 
- * @return 0 on success; non-zero otherwise
- */
-
-int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
-{
-    CURLcode res;
-    char fname[256];
-    pid_t pid =getpid();
-    long response_code;
-
-    res = curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
-    if ( res == CURLE_OK ) {
-	    printf("Response code: %ld\n", response_code);
-    }
-
-    if ( response_code >= 400 ) { 
-    	fprintf(stderr, "Error.\n");
-        return 1;
-    }
-
-    char *ct = NULL;
-    res = curl_easy_getinfo(curl_handle, CURLINFO_CONTENT_TYPE, &ct);
-    if ( res == CURLE_OK && ct != NULL ) {
-    	printf("Content-Type: %s, len=%ld\n", ct, strlen(ct));
-    } else {
-        fprintf(stderr, "Failed obtain Content-Type\n");
-        return 2;
-    }
-
-    if ( strstr(ct, CT_HTML) ) {
-        return process_html(curl_handle, p_recv_buf);
-    } else if ( strstr(ct, CT_PNG) ) {
-        return process_png(curl_handle, p_recv_buf);
-    } else {
-        sprintf(fname, "./output_%d", pid);
-    }
-
-    return write_file(fname, p_recv_buf->buf, p_recv_buf->size);
 }

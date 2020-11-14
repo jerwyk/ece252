@@ -7,6 +7,7 @@
 #include <semaphore.h>
 #include <sys/time.h>
 #include "util.h"
+#include "crawler.h"
 #include "png.h"
 
 #define ECE252_HEADER "X-Ece252-Fragment: "
@@ -21,12 +22,16 @@ int image_num;
 int thread_num;
 char *logfile;
 char *seed_url;
+
 pthread_rwlock_t rw_urls;
 pthread_rwlock_t rw_pngs;
 pthread_mutex_t mutex;
 pthread_mutex_t file_mutex;
-semt_t sem_frontier;
+sem_t sem_frontier;
+pthread_cond_t cond_frontier;
 volatile int num_pngs;
+int num_thread_wait;
+int finished = 0;
 
 
 int main(int argc, char **argv)
@@ -46,7 +51,7 @@ int main(int argc, char **argv)
     {
         for(int i = 1; i < argc - 1; ++i)
         {
-            if(strcmp(argv[i], "-t") == 0)
+            if(strcmp(argv[i], "-t") == 0)pthread_cond_t cond_frontier;
             {
                 thread_num = strtol(argv[++i], NULL, 10);
                 if(thread_num < 1)
@@ -79,8 +84,8 @@ int main(int argc, char **argv)
     url_entry_t *seed = (url_entry_t *)malloc(sizeof(url_entry_t));
     strcpy(seed->text, seed_url);
 
-    TAILQ_INIT(&url_frontier);
-    TAILQ_INSERT_TAIL(&url_frontier, seed, pointers);
+    STAILQ_INIT(&url_frontier);
+    STAILQ_INSERT_TAIL(&url_frontier, seed, pointers);
 	
     /* create threads to crawl the web */
 	pthread_t* threads = malloc(sizeof(pthread_t) * thread_num);
