@@ -25,7 +25,7 @@ pthread_rwlock_t rw_urls;
 pthread_rwlock_t rw_pngs;
 pthread_mutex_t mutex;
 pthread_mutex_t file_mutex;
-semt_t sem_frontier;
+sem_t sem_frontier;
 volatile int num_pngs;
 
 
@@ -82,6 +82,12 @@ int main(int argc, char **argv)
     TAILQ_INIT(&url_frontier);
     TAILQ_INSERT_TAIL(&url_frontier, seed, pointers);
 	
+	pthread_rwlock_init(&rw_urls, NULL);
+	pthread_rwlock_init(&rw_pngs, NULL);
+	pthread_mutex_init(&mutex, NULL);
+	pthread_mutex_init(&file_mutex, NULL);
+	sem_init(&sem_frontier, 0, 1);
+	
     /* create threads to crawl the web */
 	pthread_t* threads = malloc(sizeof(pthread_t) * thread_num);
 	int* thread_status = malloc(sizeof(int) * thread_num);
@@ -100,6 +106,12 @@ int main(int argc, char **argv)
 
     /* clean up */
     curl_global_cleanup();
+	
+	pthread_rwlock_destroy(&rw_urls);
+	pthread_rwlock_destroy(&rw_pngs);
+	pthread_mutex_destroy(&mutex);
+	pthread_mutex_destroy(&file_mutex);
+	sem_destroy(&sem_frontier, 0, 1);
 
     gettimeofday(&t2, NULL);
     double t1_sec, t2_sec;
