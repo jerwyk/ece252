@@ -1,5 +1,5 @@
 
-void t_crawler(int max)
+void* t_crawler(void* max)
 {
 
 }
