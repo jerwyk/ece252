@@ -17,6 +17,10 @@ hashmap_t visited_urls;
 hashmap_t visited_pngs;
 struct url_queue_t url_frontier;
 
+int image_num;
+int thread_num;
+char *logfile;
+char *seed_url;
 pthread_rwlock_t rw_urls;
 pthread_rwlock_t rw_pngs;
 pthread_mutex_t mutex;
@@ -31,10 +35,10 @@ int main(int argc, char **argv)
     struct timeval t1, t2;
     gettimeofday(&t1, NULL);
 	
-    int image_num = 50;
-    int thread_num = 1;
-    char *logfile = NULL;
-    char *seed_url = NULL;
+    image_num = 50;
+    thread_num = 1;
+    logfile = NULL;
+    seed_url = NULL;
 	void** retval;
 	
     /* parse options */
@@ -85,7 +89,7 @@ int main(int argc, char **argv)
     for(int i = 0; i < thread_num; ++i)
     {
 		// run t_crawler with each thread with argument max
-		thread_status[i] = pthread_create(&threads[i], NULL, t_crawler, max);
+		thread_status[i] = pthread_create(&threads[i], NULL, t_crawler, NULL);
     }
 	
 	for(int i = 1; i < thread_num; ++i){
