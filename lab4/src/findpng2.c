@@ -117,18 +117,23 @@ int main(int argc, char **argv)
 	}
 
     /* clean up */
+	if(f_log != NULL){
+		fclose(f_log);
+	}
+    fclose(f_result);
     curl_global_cleanup();
+	hdestroy();
+	free((void*)seed);
+	
+	while(STAILQ_FIRST(&url_frontier) != NULL){
+		STAILQ_REMOVE(&url_frontier, pointers);
+	}
 	
 	pthread_rwlock_destroy(&rw_urls);
 	pthread_rwlock_destroy(&rw_pngs);
 	pthread_mutex_destroy(&mutex);
 	pthread_mutex_destroy(&url_mutex);
 	sem_destroy(&sem_frontier);
-
-	if(f_log != NULL){
-		fclose(f_log);
-	}
-    fclose(f_result);
 
     gettimeofday(&t2, NULL);
     double t1_sec, t2_sec;
