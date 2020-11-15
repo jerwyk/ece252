@@ -1,5 +1,6 @@
 #include "crawler.h"
 #include "util.h"
+#include "png.h"
 #include <search.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -18,13 +19,10 @@ extern char url_buf[2048][256];
 extern int url_buf_tail;
 extern struct url_queue_t url_frontier;
 
-extern pthread_rwlock_t rw_urls;
-extern pthread_rwlock_t rw_pngs;
 extern pthread_mutex_t mutex;
 extern pthread_mutex_t url_mutex;
 extern sem_t sem_frontier;
 extern pthread_cond_t cond_frontier;
-extern volatile int num_pngs;
 extern int num_thread_wait;
 
 extern int finished;
@@ -38,7 +36,34 @@ void* t_crawler(void* param)
     url_entry_t *url_entry;
     while(1)
     {
-        printf("mutex: %lu\n", pthread_self());
+        //printf("mutex: %lu\n", pthread_self());
+        sem_wait(&sem_frontier);
+        pthread_mutex_lock(&mutex);
+        {
+            if(!finished)
+            {
+                url_entry = STAILQ_FIRST(&url_frontier);
+                //printf("remove: %lu\n", pthread_self());
+                STAILQ_REMOVE_HEAD(&url_frontier, pointers);
+            }
+            
+        }
+        pthread_mutex_unlock(&mutex);
+
+        if(finished == 1)
+        {
+            pthread_exit(NULL);
+        }
+
+        CURL *curl_handle;
+        RECV_BUF recv_buf;
+
+        curl_handle = easy_handle_init(&recv_buf, url_entry->url);
+        curl_easy_perform(curl_handle);
+
+        /* process the download data */
+        process_data(curl_handle, &recv_buf);
+
         pthread_mutex_lock(&mutex);
         {
             num_thread_wait++;
@@ -52,31 +77,12 @@ void* t_crawler(void* param)
                 {
                     finished = 1;
                     pthread_cond_broadcast(&cond_frontier);
+                    sem_post(&sem_frontier);
                 } 
             }
             num_thread_wait--;
         }
         pthread_mutex_unlock(&mutex);
-
-        if(finished == 1)
-        {
-            pthread_exit(NULL);
-        }
-
-        
-        url_entry = STAILQ_FIRST(&url_frontier);
-        printf("remove: %lu\n", pthread_self());
-        STAILQ_REMOVE_HEAD(&url_frontier, pointers);
-
-
-        CURL *curl_handle;
-        RECV_BUF recv_buf;
-
-        curl_handle = easy_handle_init(&recv_buf, url_entry->url);
-        curl_easy_perform(curl_handle);
-
-        /* process the download data */
-        process_data(curl_handle, &recv_buf);
     }
 }
 
@@ -95,8 +101,9 @@ void add_url(char *url)
             url_entry_t *url_entry = (url_entry_t *)malloc(sizeof(url_entry_t));
             strcpy(url_entry->url, url);
             STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
-            printf("signal: %lu\n", pthread_self());
+            //printf("signal: %lu\n", pthread_self());
             pthread_cond_signal(&cond_frontier);
+            sem_post(&sem_frontier);
         }
     }
     pthread_mutex_unlock(&mutex);
@@ -115,6 +122,8 @@ int process_html(CURL *curl_handle, RECV_BUF *p_recv_buf)
 
 int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 {
+    int png = is_png((uint8_t *)p_recv_buf->buf, 8);
+
     char *url = NULL;          /* effective URL */
     curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
 
@@ -123,19 +132,28 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
     new_url.key = url;
     ENTRY *res;
     
-    pthread_mutex_lock(&url_mutex);
+    pthread_mutex_lock(&mutex);
     {
         res = hsearch(new_url, FIND);
         if(res == NULL)
         {
-            image_num--;
             strcpy(url_buf[url_buf_tail], url);
-            new_url.key = url_buf[url_buf_tail++]; 
-            fprintf(f_result, "%s\n", url);
+            new_url.key = url_buf[url_buf_tail++];
+            if(image_num == 0)
+            {
+                finished = 1;
+                sem_post(&sem_frontier);
+            }
+            else if(png)
+            {
+                image_num--;
+                fprintf(f_result, "%s\n", url);
+            }
+
             hsearch(new_url, ENTER);
         }
     }
-    pthread_mutex_unlock(&url_mutex);
+    pthread_mutex_unlock(&mutex);
 
     return 0;
 }

@@ -126,7 +126,7 @@ int main(int argc, char **argv)
 	free((void*)seed);
 	
 	while(STAILQ_FIRST(&url_frontier) != NULL){
-		STAILQ_REMOVE(&url_frontier, pointers);
+		STAILQ_REMOVE_HEAD(&url_frontier, pointers);
 	}
 	
 	pthread_rwlock_destroy(&rw_urls);
