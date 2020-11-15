@@ -25,10 +25,7 @@ extern struct hsearch_data visited_urls;
 extern struct hsearch_data visited_pngs;
 
 extern pthread_mutex_t mutex;
-extern pthread_mutex_t url_mutex;
 extern sem_t sem_frontier;
-extern pthread_cond_t cond_frontier;
-extern int num_thread_wait;
 
 extern int finished;
 
@@ -39,7 +36,6 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf);
 void* t_crawler(void* param)
 {
     url_entry_t *url_entry;
-    int finish_local;
     while(1)
     {    
         sem_wait(&sem_frontier);
@@ -103,7 +99,6 @@ void add_url(char *url)
             url_entry_t *url_entry = (url_entry_t *)malloc(sizeof(url_entry_t));
             strcpy(url_entry->url, url);
             STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
-            pthread_cond_signal(&cond_frontier);
             sem_post(&sem_frontier);
         }
     }
@@ -186,7 +181,6 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
             if(f_log != NULL)
             {
                 fprintf(f_log, "%s\n", url);
-                printf("%d: %lu: %s\n", STAILQ_EMPTY(&url_frontier), pthread_self(), url);
             }  
         }
         pthread_mutex_unlock(&mutex);

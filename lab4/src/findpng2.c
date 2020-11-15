@@ -12,7 +12,6 @@
 #include "crawler.h"
 #include "png.h"
 
-
 #define ECE252_HEADER "X-Ece252-Fragment: "
 #define STRIP_NUM 50
 #define URL_BUF_SIZE 2048
@@ -32,13 +31,8 @@ FILE *f_log = NULL;
 FILE *f_result = NULL;
 
 pthread_mutex_t mutex;
-pthread_mutex_t url_mutex;
 sem_t sem_frontier;
-pthread_cond_t cond_frontier;
-volatile int num_pngs;
-int num_thread_wait;
 int finished = 0;
-
 
 int main(int argc, char **argv)
 {
@@ -101,7 +95,6 @@ int main(int argc, char **argv)
     STAILQ_INSERT_TAIL(&url_frontier, seed, pointers);
 	
 	pthread_mutex_init(&mutex, NULL);
-	pthread_mutex_init(&url_mutex, NULL);
 	sem_init(&sem_frontier, 0, 1);
 	
     /* create threads to crawl the web */
@@ -134,7 +127,6 @@ int main(int argc, char **argv)
 	}
 	
 	pthread_mutex_destroy(&mutex);
-	pthread_mutex_destroy(&url_mutex);
 	sem_destroy(&sem_frontier);
 
     gettimeofday(&t2, NULL);
