@@ -14,6 +14,8 @@
 #define STRIP_NUM 50
 #define URL_BUF_SIZE 2048
 
+char* url_check_1 = "http://";
+char* url_check_2 = "https://";
 char url_buf[URL_BUF_SIZE][256];
 int url_buf_tail = 0;
 struct url_queue_t url_frontier;
@@ -72,8 +74,15 @@ int main(int argc, char **argv)
                 f_log = fopen(argv[++i], "w");
             }
         }
-        seed_url = argv[argc - 1];
     }
+	
+	/* checking if input url is valid */
+    seed_url = argv[argc - 1];
+	if(strstr(seed_url, url_check_1) == NULL && strstr(seed_url, url_check_2) == NULL){
+			printf("Usage: ./findpng2 -t T -m M seed_url\n");
+			printf("Example: ./findpng2 -t 10 -m 50 http://ece252-1.uwaterloo.ca/lab4\n");
+			return -4;
+	}
 
     /* initializations */
     f_result = fopen("png_urls.txt", "w");
@@ -94,7 +103,7 @@ int main(int argc, char **argv)
     /* create threads to crawl the web */
 	pthread_t* threads = malloc(sizeof(pthread_t) * thread_num);
 	int* thread_status = malloc(sizeof(int) * thread_num);
-	
+
     for(int i = 0; i < thread_num; ++i)
     {
 		// run t_crawler with each thread with argument max
@@ -116,15 +125,17 @@ int main(int argc, char **argv)
 	pthread_mutex_destroy(&url_mutex);
 	sem_destroy(&sem_frontier);
 
+	if(f_log != NULL){
+		fclose(f_log);
+	}
+    fclose(f_result);
+
     gettimeofday(&t2, NULL);
     double t1_sec, t2_sec;
     t1_sec = t1.tv_sec + t1.tv_usec / 1000000.0;
     t2_sec = t2.tv_sec + t2.tv_usec / 1000000.0;
 
     printf("findpng2 execution time: %f seconds\n", t2_sec - t1_sec);
-
-    fclose(f_log);
-    fclose(f_result);
 	
 	return 0;
 }
