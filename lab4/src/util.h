@@ -1,4 +1,5 @@
 #pragma once
+#define PERSONAL_DEBUG
 
 #include <stdlib.h>
 #include <string.h>
@@ -25,11 +26,11 @@ typedef struct _url_entry
     STAILQ_ENTRY(_url_entry) pointers;
 } url_entry_t;
 
-STAILQ_HEAD(url_queue_t, url_entry_t);
+STAILQ_HEAD(url_queue_t, _url_entry);
 
 htmlDocPtr mem_getdoc(char *buf, int size, const char *url);
 xmlXPathObjectPtr getnodeset (xmlDocPtr doc, xmlChar *xpath);
-int find_http(char *fname, int size, int follow_relative_links, const char *base_url);
+int find_http(char *fname, int size, int follow_relative_links, const char *base_url, void callback(char *));
 size_t header_cb_curl(char *p_recv, size_t size, size_t nmemb, void *userdata);
 size_t write_cb_curl3(char *p_recv, size_t size, size_t nmemb, void *p_userdata);
 int recv_buf_init(RECV_BUF *ptr, size_t max_size);

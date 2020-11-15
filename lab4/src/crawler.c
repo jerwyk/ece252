@@ -2,20 +2,26 @@
 #include "util.h"
 #include <search.h>
 #include <pthread.h>
+#include <semaphore.h>
+
+#define CT_PNG  "image/png"
+#define CT_HTML "text/html"
+
+typedef struct hsearch_data hashmap_t;
 
 extern int image_num;
 extern int thread_num;
-extern char *logfile;
-extern char *seed_url;
+extern FILE *f_log;
+extern FILE *f_result;
 
-extern hashmap_t visited_urls;
-extern hashmap_t visited_pngs;
+extern char url_buf[2048][256];
+extern int url_buf_tail;
 extern struct url_queue_t url_frontier;
 
 extern pthread_rwlock_t rw_urls;
 extern pthread_rwlock_t rw_pngs;
 extern pthread_mutex_t mutex;
-extern pthread_mutex_t file_mutex;
+extern pthread_mutex_t url_mutex;
 extern sem_t sem_frontier;
 extern pthread_cond_t cond_frontier;
 extern volatile int num_pngs;
@@ -29,7 +35,7 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf);
 
 void* t_crawler(void* param)
 {
-    char * url;
+    url_entry_t *url_entry;
     while(1)
     {
         pthread_mutex_lock(&mutex);
@@ -53,47 +59,76 @@ void* t_crawler(void* param)
                 pthread_exit(NULL);
             }
             num_thread_wait--;
-            url = STAILQ_FIRST(&url_frontier);
+            url_entry = STAILQ_FIRST(&url_frontier);
             STAILQ_REMOVE_HEAD(&url_frontier, pointers);
         }
         pthread_mutex_unlock(&mutex);
 
         CURL *curl_handle;
-        CURLcode res;
-        curl_handle = easy_handle_init(&recv_buf, url);
-
         RECV_BUF recv_buf;
-        res = curl_easy_perform(curl_handle);
+
+        curl_handle = easy_handle_init(&recv_buf, url_entry->url);
+        curl_easy_perform(curl_handle);
 
         /* process the download data */
         process_data(curl_handle, &recv_buf);
     }
 }
 
+void add_url(char *url)
+{
+    ENTRY new_url;
+    new_url.data = NULL;
+    new_url.key = url;
+    ENTRY *res;
+    
+    pthread_mutex_lock(&url_mutex);
+    {
+        res = hsearch(new_url, FIND);
+        if(res == NULL)
+        {
+            url_entry_t *url_entry = (url_entry_t *)malloc(sizeof(url_entry_t));
+            strcpy(url_entry->url, url);
+            STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
+        }
+    }
+    pthread_mutex_unlock(&url_mutex);
+}
+
 int process_html(CURL *curl_handle, RECV_BUF *p_recv_buf)
 {
-    char fname[256];
     int follow_relative_link = 1;
     char *url = NULL; 
-    pid_t pid =getpid();
 
     curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
-    find_http(p_recv_buf->buf, p_recv_buf->size, follow_relative_link, url); 
+    find_http(p_recv_buf->buf, p_recv_buf->size, follow_relative_link, url, add_url); 
     return 0;
 }
 
 int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 {
-    pid_t pid =getpid();
-    char fname[256];
-    char *eurl = NULL;          /* effective URL */
-    curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &eurl);
-    if ( eurl != NULL) {
-        printf("The PNG url is: %s\n", eurl);
-    }
+    char *url = NULL;          /* effective URL */
+    curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
 
-    sprintf(fname, "./output_%d_%d.png", p_recv_buf->seq, pid);
-    return write_file(fname, p_recv_buf->buf, p_recv_buf->size);
+    ENTRY new_url;
+    new_url.data = NULL;
+    new_url.key = url;
+    ENTRY *res;
+    
+    pthread_mutex_lock(&url_mutex);
+    {
+        res = hsearch(new_url, FIND);
+        if(res == NULL)
+        {
+            strcpy(url_buf[url_buf_tail], url);
+            new_url.key = url_buf[url_buf_tail++]; 
+            fprintf(f_result, "%s\n", url);
+            hsearch(new_url, ENTER);
+        }
+    }
+    pthread_mutex_unlock(&url_mutex);
+
+    return 0;
 }
 /**
  * @brief process teh download data by curl
@@ -105,33 +140,43 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 {
     CURLcode res;
-    char fname[256];
-    pid_t pid =getpid();
-    long response_code;
-
-    res = curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
-
-    if ( response_code >= 400 ) { 
-    	fprintf(stderr, "Error.\n");
-        return 1;
-    }
 
     char *ct = NULL;
     res = curl_easy_getinfo(curl_handle, CURLINFO_CONTENT_TYPE, &ct);
     if ( res == CURLE_OK && ct != NULL ) {
     	;
     } else {
-        fprintf(stderr, "Failed obtain Content-Type\n");
+        //fprintf(stderr, "Failed obtain Content-Type\n");
         return 2;
     }
 
     if ( strstr(ct, CT_HTML) ) {
+        char *url = NULL;
+        curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
+        ENTRY new_url;
+        new_url.data = NULL;
+        new_url.key = url;
+        ENTRY *hres;  
+        pthread_mutex_lock(&url_mutex);
+        {
+            hres = hsearch(new_url, FIND);
+            if(hres == NULL)
+            {
+                strcpy(url_buf[url_buf_tail], url);
+                new_url.key = url_buf[url_buf_tail++]; 
+                if(f_log != NULL)
+                {
+                    fprintf(f_log, "%s\n", url);
+                }  
+                hsearch(new_url, ENTER);
+            }
+        }
+        pthread_mutex_unlock(&url_mutex);
+
         return process_html(curl_handle, p_recv_buf);
     } else if ( strstr(ct, CT_PNG) ) {
         return process_png(curl_handle, p_recv_buf);
-    } else {
-        sprintf(fname, "./output_%d", pid);
     }
 
-    return write_file(fname, p_recv_buf->buf, p_recv_buf->size);
+    return 0;
 }

@@ -35,8 +35,6 @@
 #define BUF_SIZE 1048576  /* 1024*1024 = 1M */
 #define BUF_INC  524288   /* 1024*512  = 0.5M */
 
-#define CT_PNG  "image/png"
-#define CT_HTML "text/html"
 #define CT_PNG_LEN  9
 #define CT_HTML_LEN 9
 
@@ -52,7 +50,7 @@ htmlDocPtr mem_getdoc(char *buf, int size, const char *url)
     htmlDocPtr doc = htmlReadMemory(buf, size, url, NULL, opts);
     
     if ( doc == NULL ) {
-        fprintf(stderr, "Document not parsed successfully.\n");
+        //fprintf(stderr, "Document not parsed successfully.\n");
         return NULL;
     }
     return doc;
@@ -66,24 +64,24 @@ xmlXPathObjectPtr getnodeset (xmlDocPtr doc, xmlChar *xpath)
 
     context = xmlXPathNewContext(doc);
     if (context == NULL) {
-        printf("Error in xmlXPathNewContext\n");
+        //printf("Error in xmlXPathNewContext\n");
         return NULL;
     }
     result = xmlXPathEvalExpression(xpath, context);
     xmlXPathFreeContext(context);
     if (result == NULL) {
-        printf("Error in xmlXPathEvalExpression\n");
+        //printf("Error in xmlXPathEvalExpression\n");
         return NULL;
     }
     if(xmlXPathNodeSetIsEmpty(result->nodesetval)){
         xmlXPathFreeObject(result);
-        printf("No result\n");
+        //printf("No result\n");
         return NULL;
     }
     return result;
 }
 
-int find_http(char *buf, int size, int follow_relative_links, const char *base_url)
+int find_http(char *buf, int size, int follow_relative_links, const char *base_url, void callback(char *))
 {
 
     int i;
@@ -109,7 +107,7 @@ int find_http(char *buf, int size, int follow_relative_links, const char *base_u
                 xmlFree(old);
             }
             if ( href != NULL && !strncmp((const char *)href, "http", 4) ) {
-                printf("href: %s\n", href);
+                callback((char *)href);
             }
             xmlFree(href);
         }
@@ -138,9 +136,6 @@ size_t header_cb_curl(char *p_recv, size_t size, size_t nmemb, void *userdata)
     int realsize = size * nmemb;
     RECV_BUF *p = userdata;
 
-#ifdef DEBUG1_
-    printf("%s", p_recv);
-#endif /* DEBUG1_ */
     if (realsize > strlen(ECE252_HEADER) &&
 	strncmp(p_recv, ECE252_HEADER, strlen(ECE252_HEADER)) == 0) {
 

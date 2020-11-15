@@ -12,21 +12,21 @@
 
 #define ECE252_HEADER "X-Ece252-Fragment: "
 #define STRIP_NUM 50
-typedef struct hsearch_data hashmap_t;
+#define URL_BUF_SIZE 2048
 
-hashmap_t visited_urls;
-hashmap_t visited_pngs;
+char url_buf[URL_BUF_SIZE][256];
+int url_buf_tail = 0;
 struct url_queue_t url_frontier;
 
 int image_num;
 int thread_num;
-char *logfile;
-char *seed_url;
+FILE *f_log = NULL;
+FILE *f_result = NULL;
 
 pthread_rwlock_t rw_urls;
 pthread_rwlock_t rw_pngs;
 pthread_mutex_t mutex;
-pthread_mutex_t file_mutex;
+pthread_mutex_t url_mutex;
 sem_t sem_frontier;
 pthread_cond_t cond_frontier;
 volatile int num_pngs;
@@ -42,16 +42,14 @@ int main(int argc, char **argv)
 	
     image_num = 50;
     thread_num = 1;
-    logfile = NULL;
-    seed_url = NULL;
-	void** retval;
+    char *seed_url = NULL;
 	
     /* parse options */
     if(argc > 1)
     {
         for(int i = 1; i < argc - 1; ++i)
         {
-            if(strcmp(argv[i], "-t") == 0)pthread_cond_t cond_frontier;
+            if(strcmp(argv[i], "-t") == 0)
             {
                 thread_num = strtol(argv[++i], NULL, 10);
                 if(thread_num < 1)
@@ -71,21 +69,27 @@ int main(int argc, char **argv)
             }
             else if(strcmp(argv[i], "-v") == 0)
             {
-                logfile = argv[++i];
+                f_log = fopen(argv[++i], "w");
             }
         }
         seed_url = argv[argc - 1];
     }
 
     /* initializations */
+    f_result = fopen("png_urls.txt", "w");
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    hcreate_r(2000, &visited_urls);
-    hcreate_r(image_num, &visited_pngs);
+    hcreate(URL_BUF_SIZE);
     url_entry_t *seed = (url_entry_t *)malloc(sizeof(url_entry_t));
-    strcpy(seed->text, seed_url);
+    strcpy(seed->url, seed_url);
 
     STAILQ_INIT(&url_frontier);
     STAILQ_INSERT_TAIL(&url_frontier, seed, pointers);
+	
+	pthread_rwlock_init(&rw_urls, NULL);
+	pthread_rwlock_init(&rw_pngs, NULL);
+	pthread_mutex_init(&mutex, NULL);
+	pthread_mutex_init(&url_mutex, NULL);
+	sem_init(&sem_frontier, 0, 1);
 	
     /* create threads to crawl the web */
 	pthread_t* threads = malloc(sizeof(pthread_t) * thread_num);
@@ -97,14 +101,20 @@ int main(int argc, char **argv)
 		thread_status[i] = pthread_create(&threads[i], NULL, t_crawler, NULL);
     }
 	
-	for(int i = 1; i < thread_num; ++i){
+	for(int i = 0; i < thread_num; ++i){
 		if(thread_status[i] == 0){
-			pthread_join(threads[i], retval);
+			pthread_join(threads[i], NULL);
 		}
 	}
 
     /* clean up */
     curl_global_cleanup();
+	
+	pthread_rwlock_destroy(&rw_urls);
+	pthread_rwlock_destroy(&rw_pngs);
+	pthread_mutex_destroy(&mutex);
+	pthread_mutex_destroy(&url_mutex);
+	sem_destroy(&sem_frontier);
 
     gettimeofday(&t2, NULL);
     double t1_sec, t2_sec;
@@ -112,6 +122,9 @@ int main(int argc, char **argv)
     t2_sec = t2.tv_sec + t2.tv_usec / 1000000.0;
 
     printf("findpng2 execution time: %f seconds\n", t2_sec - t1_sec);
+
+    fclose(f_log);
+    fclose(f_result);
 	
 	return 0;
 }
