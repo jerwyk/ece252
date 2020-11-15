@@ -38,12 +38,13 @@ void* t_crawler(void* param)
     url_entry_t *url_entry;
     while(1)
     {
+        printf("mutex: %lu\n", pthread_self());
         pthread_mutex_lock(&mutex);
         {
             num_thread_wait++;
-            if(STAILQ_EMPTY(&url_frontier))
+            if(STAILQ_EMPTY(&url_frontier) || image_num == 0)
             {
-                if(num_thread_wait < thread_num)
+                if(num_thread_wait < thread_num && image_num != 0)
                 {
                     pthread_cond_wait(&cond_frontier, &mutex);
                 }
@@ -53,16 +54,20 @@ void* t_crawler(void* param)
                     pthread_cond_broadcast(&cond_frontier);
                 } 
             }
-            if(finished)
-            {
-                pthread_mutex_unlock(&mutex);
-                pthread_exit(NULL);
-            }
             num_thread_wait--;
-            url_entry = STAILQ_FIRST(&url_frontier);
-            STAILQ_REMOVE_HEAD(&url_frontier, pointers);
         }
         pthread_mutex_unlock(&mutex);
+
+        if(finished == 1)
+        {
+            pthread_exit(NULL);
+        }
+
+        
+        url_entry = STAILQ_FIRST(&url_frontier);
+        printf("remove: %lu\n", pthread_self());
+        STAILQ_REMOVE_HEAD(&url_frontier, pointers);
+
 
         CURL *curl_handle;
         RECV_BUF recv_buf;
@@ -82,7 +87,7 @@ void add_url(char *url)
     new_url.key = url;
     ENTRY *res;
     
-    pthread_mutex_lock(&url_mutex);
+    pthread_mutex_lock(&mutex);
     {
         res = hsearch(new_url, FIND);
         if(res == NULL)
@@ -90,9 +95,12 @@ void add_url(char *url)
             url_entry_t *url_entry = (url_entry_t *)malloc(sizeof(url_entry_t));
             strcpy(url_entry->url, url);
             STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
+            printf("signal: %lu\n", pthread_self());
+            pthread_cond_signal(&cond_frontier);
         }
     }
-    pthread_mutex_unlock(&url_mutex);
+    pthread_mutex_unlock(&mutex);
+
 }
 
 int process_html(CURL *curl_handle, RECV_BUF *p_recv_buf)
@@ -120,6 +128,7 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
         res = hsearch(new_url, FIND);
         if(res == NULL)
         {
+            image_num--;
             strcpy(url_buf[url_buf_tail], url);
             new_url.key = url_buf[url_buf_tail++]; 
             fprintf(f_result, "%s\n", url);
@@ -167,6 +176,7 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
                 if(f_log != NULL)
                 {
                     fprintf(f_log, "%s\n", url);
+                    printf("%s\n", url);
                 }  
                 hsearch(new_url, ENTER);
             }
