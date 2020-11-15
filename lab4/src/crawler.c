@@ -42,40 +42,24 @@ void* t_crawler(void* param)
     int finish_local;
     while(1)
     {    
+        sem_wait(&sem_frontier);
         pthread_mutex_lock(&mutex);
         {
-            num_thread_wait++;
-            if(num_thread_wait < thread_num && !finished)
-            {
-                pthread_cond_wait(&cond_frontier, &mutex);
-            }
-            else
-            {
-                if(STAILQ_EMPTY(&url_frontier))
-                {
-                    finished = 1;
-                    sem_post(&sem_frontier);
-                    num_thread_wait = 0;
-                    pthread_cond_broadcast(&cond_frontier);
-                }
-            }
-            num_thread_wait--;
             if(!finished)
             {
                 url_entry = STAILQ_FIRST(&url_frontier);
                 //printf("remove: %lu\n", pthread_self());
                 STAILQ_REMOVE_HEAD(&url_frontier, pointers);
-            }   
-            finish_local = finished;
+            }
+            else
+            {
+                sem_post(&sem_frontier);
+                pthread_mutex_unlock(&mutex);
+                pthread_exit(NULL);
+            }
+            thread_working++;
         }
         pthread_mutex_unlock(&mutex);
-
-        //printf("mutex: %lu\n", pthread_self());
-        if(finish_local)
-        {
-            //sem_post(&sem_frontier);
-            pthread_exit(NULL);
-        }
 
         CURL *curl_handle;
         RECV_BUF recv_buf;
@@ -84,7 +68,19 @@ void* t_crawler(void* param)
         curl_easy_perform(curl_handle);
 
         /* process the download data */
-        process_data(curl_handle, &recv_buf);
+        process_data(curl_handle, &recv_buf); 
+
+        pthread_mutex_lock(&mutex);
+        {
+            thread_working--;
+            if((STAILQ_EMPTY(&url_frontier) || image_num == 0) && thread_working == 0)
+            {
+                finished = 1;
+                sem_post(&sem_frontier);
+            }
+
+        }
+        pthread_mutex_unlock(&mutex);
     }
 }
 
@@ -108,7 +104,7 @@ void add_url(char *url)
             strcpy(url_entry->url, url);
             STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
             pthread_cond_signal(&cond_frontier);
-            //sem_post(&sem_frontier);
+            sem_post(&sem_frontier);
         }
     }
     pthread_mutex_unlock(&mutex);
