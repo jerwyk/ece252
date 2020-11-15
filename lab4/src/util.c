@@ -308,11 +308,11 @@ CURL *easy_handle_init(RECV_BUF *ptr, const char *url)
     curl_easy_setopt(curl_handle, CURLOPT_ACCEPT_ENCODING, "");
 
     /* Max time in seconds that the connection phase to the server to take */
-    //curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 5L);
+    curl_easy_setopt(curl_handle, CURLOPT_CONNECTTIMEOUT, 5L);
     /* Max time in seconds that libcurl transfer operation is allowed to take */
-    //curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 10L);
+    curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 10L);
     /* Time out for Expect: 100-continue response in milliseconds */
-    //curl_easy_setopt(curl_handle, CURLOPT_EXPECT_100_TIMEOUT_MS, 0L);
+    curl_easy_setopt(curl_handle, CURLOPT_EXPECT_100_TIMEOUT_MS, 0L);
 
     /* Enable the cookie engine without reading any initial cookies */
     curl_easy_setopt(curl_handle, CURLOPT_COOKIEFILE, "");

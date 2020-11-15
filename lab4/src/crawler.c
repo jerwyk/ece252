@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include "crawler.h"
 #include "util.h"
 #include "png.h"
@@ -12,12 +14,15 @@ typedef struct hsearch_data hashmap_t;
 
 extern int image_num;
 extern int thread_num;
+extern int thread_working;
 extern FILE *f_log;
 extern FILE *f_result;
 
 extern char url_buf[2048][256];
 extern int url_buf_tail;
 extern struct url_queue_t url_frontier;
+extern struct hsearch_data visited_urls;
+extern struct hsearch_data visited_pngs;
 
 extern pthread_mutex_t mutex;
 extern pthread_mutex_t url_mutex;
@@ -35,7 +40,13 @@ void* t_crawler(void* param)
 {
     url_entry_t *url_entry;
     while(1)
-    {
+    {    
+        pthread_mutex_lock(&mutex);
+        {
+            finished = image_num == 0 || (thread_working == 0 && STAILQ_EMPTY(&url_frontier));
+        }
+        pthread_mutex_unlock(&mutex);
+
         //printf("mutex: %lu\n", pthread_self());
         sem_wait(&sem_frontier);
         pthread_mutex_lock(&mutex);
@@ -45,8 +56,8 @@ void* t_crawler(void* param)
                 url_entry = STAILQ_FIRST(&url_frontier);
                 //printf("remove: %lu\n", pthread_self());
                 STAILQ_REMOVE_HEAD(&url_frontier, pointers);
-            }
-            
+                ++thread_working;
+            }   
         }
         pthread_mutex_unlock(&mutex);
 
@@ -66,21 +77,7 @@ void* t_crawler(void* param)
 
         pthread_mutex_lock(&mutex);
         {
-            num_thread_wait++;
-            if(STAILQ_EMPTY(&url_frontier) || image_num == 0)
-            {
-                if(num_thread_wait < thread_num && image_num != 0)
-                {
-                    pthread_cond_wait(&cond_frontier, &mutex);
-                }
-                else
-                {
-                    finished = 1;
-                    pthread_cond_broadcast(&cond_frontier);
-                    sem_post(&sem_frontier);
-                } 
-            }
-            num_thread_wait--;
+            --thread_working;
         }
         pthread_mutex_unlock(&mutex);
     }
@@ -95,9 +92,13 @@ void add_url(char *url)
     
     pthread_mutex_lock(&mutex);
     {
-        res = hsearch(new_url, FIND);
+        hsearch_r(new_url, FIND, &res, &visited_urls);
         if(res == NULL)
         {
+            strcpy(url_buf[url_buf_tail], url);
+            new_url.key = url_buf[url_buf_tail++];
+            hsearch_r(new_url, ENTER, &res, &visited_urls);
+
             url_entry_t *url_entry = (url_entry_t *)malloc(sizeof(url_entry_t));
             strcpy(url_entry->url, url);
             STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
@@ -134,7 +135,7 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
     
     pthread_mutex_lock(&mutex);
     {
-        res = hsearch(new_url, FIND);
+        hsearch_r(new_url, FIND, &res, &visited_pngs);
         if(res == NULL)
         {
             strcpy(url_buf[url_buf_tail], url);
@@ -150,7 +151,7 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
                 fprintf(f_result, "%s\n", url);
             }
 
-            hsearch(new_url, ENTER);
+            hsearch_r(new_url, ENTER, &res, &visited_pngs);
         }
     }
     pthread_mutex_unlock(&mutex);
@@ -180,26 +181,15 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
     if ( strstr(ct, CT_HTML) ) {
         char *url = NULL;
         curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
-        ENTRY new_url;
-        new_url.data = NULL;
-        new_url.key = url;
-        ENTRY *hres;  
-        pthread_mutex_lock(&url_mutex);
+        pthread_mutex_lock(&mutex);
         {
-            hres = hsearch(new_url, FIND);
-            if(hres == NULL)
+            if(f_log != NULL)
             {
-                strcpy(url_buf[url_buf_tail], url);
-                new_url.key = url_buf[url_buf_tail++]; 
-                if(f_log != NULL)
-                {
-                    fprintf(f_log, "%s\n", url);
-                    printf("%s\n", url);
-                }  
-                hsearch(new_url, ENTER);
-            }
+                fprintf(f_log, "%s\n", url);
+                printf("%d: %d: %s\n", thread_working, image_num, url);
+            }  
         }
-        pthread_mutex_unlock(&url_mutex);
+        pthread_mutex_unlock(&mutex);
 
         return process_html(curl_handle, p_recv_buf);
     } else if ( strstr(ct, CT_PNG) ) {

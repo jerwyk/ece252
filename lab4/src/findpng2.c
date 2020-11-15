@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -10,6 +12,7 @@
 #include "crawler.h"
 #include "png.h"
 
+
 #define ECE252_HEADER "X-Ece252-Fragment: "
 #define STRIP_NUM 50
 #define URL_BUF_SIZE 2048
@@ -18,15 +21,16 @@ char* url_check_1 = "http://";
 char* url_check_2 = "https://";
 char url_buf[URL_BUF_SIZE][256];
 int url_buf_tail = 0;
+struct hsearch_data visited_urls;
+struct hsearch_data visited_pngs;
 struct url_queue_t url_frontier;
 
 int image_num;
+int thread_working = 0;
 int thread_num;
 FILE *f_log = NULL;
 FILE *f_result = NULL;
 
-pthread_rwlock_t rw_urls;
-pthread_rwlock_t rw_pngs;
 pthread_mutex_t mutex;
 pthread_mutex_t url_mutex;
 sem_t sem_frontier;
@@ -87,15 +91,15 @@ int main(int argc, char **argv)
     /* initializations */
     f_result = fopen("png_urls.txt", "w");
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    hcreate(URL_BUF_SIZE);
+    //hcreate(URL_BUF_SIZE);
     url_entry_t *seed = (url_entry_t *)malloc(sizeof(url_entry_t));
     strcpy(seed->url, seed_url);
+    hcreate_r(URL_BUF_SIZE, &visited_urls);
+    hcreate_r(image_num, &visited_pngs);
 
     STAILQ_INIT(&url_frontier);
     STAILQ_INSERT_TAIL(&url_frontier, seed, pointers);
 	
-	pthread_rwlock_init(&rw_urls, NULL);
-	pthread_rwlock_init(&rw_pngs, NULL);
 	pthread_mutex_init(&mutex, NULL);
 	pthread_mutex_init(&url_mutex, NULL);
 	sem_init(&sem_frontier, 0, 1);
@@ -129,8 +133,6 @@ int main(int argc, char **argv)
 		STAILQ_REMOVE_HEAD(&url_frontier, pointers);
 	}
 	
-	pthread_rwlock_destroy(&rw_urls);
-	pthread_rwlock_destroy(&rw_pngs);
 	pthread_mutex_destroy(&mutex);
 	pthread_mutex_destroy(&url_mutex);
 	sem_destroy(&sem_frontier);
