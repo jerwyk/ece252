@@ -25,10 +25,7 @@ extern struct hsearch_data visited_urls;
 extern struct hsearch_data visited_pngs;
 
 extern pthread_mutex_t mutex;
-extern pthread_mutex_t url_mutex;
 extern sem_t sem_frontier;
-extern pthread_cond_t cond_frontier;
-extern int num_thread_wait;
 
 extern int finished;
 
@@ -109,7 +106,6 @@ void add_url(char *url)
             strcpy(url_entry->url, url);
             STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
             inserted = 1;
-            pthread_cond_signal(&cond_frontier);
             sem_post(&sem_frontier);
         }
     }
