@@ -60,12 +60,11 @@ void* t_crawler(void* param)
         pthread_mutex_unlock(&mutex);
 
         curl_easy_setopt(curl_handle, CURLOPT_URL, url_entry->url);
-        free(url_entry);
-
         curl_easy_perform(curl_handle);
 
         /* process the download data */
         process_data(curl_handle, &recv_buf);
+        free(url_entry);
 
         pthread_mutex_lock(&mutex);
         {
@@ -174,6 +173,25 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
 int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 {
     CURLcode res;
+    long response_code;
+
+    res = curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
+
+    char *url = NULL;
+    curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
+    pthread_mutex_lock(&mutex);
+    {
+        if(f_log != NULL)
+        {
+            fprintf(f_log, "%s\n", url);
+        }  
+    }
+    pthread_mutex_unlock(&mutex);
+
+    if ( response_code >= 400 ) 
+    { 
+        return 1;
+    }
 
     char *ct = NULL;
     res = curl_easy_getinfo(curl_handle, CURLINFO_CONTENT_TYPE, &ct);
@@ -184,17 +202,6 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
     }
 
     if ( strstr(ct, CT_HTML) ) {
-        char *url = NULL;
-        curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
-        pthread_mutex_lock(&mutex);
-        {
-            if(f_log != NULL)
-            {
-                fprintf(f_log, "%s\n", url);
-            }  
-        }
-        pthread_mutex_unlock(&mutex);
-
         return process_html(curl_handle, p_recv_buf);
     } else if ( strstr(ct, CT_PNG) ) {
         return process_png(curl_handle, p_recv_buf);

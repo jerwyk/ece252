@@ -85,8 +85,6 @@ int main(int argc, char **argv)
     /* initializations */
     f_result = fopen("png_urls.txt", "w");
     curl_global_init(CURL_GLOBAL_DEFAULT);
-    xmlInitParser();
-    //hcreate(URL_BUF_SIZE);
     url_entry_t *seed = (url_entry_t *)malloc(sizeof(url_entry_t));
     strcpy(seed->url, seed_url);
     hcreate_r(URL_BUF_SIZE, &visited_urls);
