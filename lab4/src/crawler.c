@@ -47,7 +47,6 @@ void* t_crawler(void* param)
             if(!finished)
             {
                 url_entry = STAILQ_FIRST(&url_frontier);
-                //printf("remove: %lu\n", pthread_self());
                 STAILQ_REMOVE_HEAD(&url_frontier, pointers);
             }
             else
@@ -181,7 +180,6 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
     if ( res == CURLE_OK && ct != NULL ) {
     	;
     } else {
-        //fprintf(stderr, "Failed obtain Content-Type\n");
         return 2;
     }
 
