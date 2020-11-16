@@ -13,7 +13,6 @@
 #include "png.h"
 
 #define ECE252_HEADER "X-Ece252-Fragment: "
-#define STRIP_NUM 50
 #define URL_BUF_SIZE 2048
 
 char* url_check_1 = "http://";
@@ -127,8 +126,8 @@ int main(int argc, char **argv)
 	while(!STAILQ_EMPTY(&url_frontier))
     {
         url_entry_t *url_entry = STAILQ_FIRST(&url_frontier);
-        free(url_entry);
 		STAILQ_REMOVE_HEAD(&url_frontier, pointers);
+        free(url_entry);
 	}
 	
 	pthread_mutex_destroy(&mutex);
