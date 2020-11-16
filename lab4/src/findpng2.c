@@ -12,7 +12,6 @@
 #include "crawler.h"
 #include "png.h"
 
-
 #define ECE252_HEADER "X-Ece252-Fragment: "
 #define STRIP_NUM 50
 #define URL_BUF_SIZE 2048
@@ -91,6 +90,7 @@ int main(int argc, char **argv)
     /* initializations */
     f_result = fopen("png_urls.txt", "w");
     curl_global_init(CURL_GLOBAL_DEFAULT);
+    xmlInitParser();
     //hcreate(URL_BUF_SIZE);
     url_entry_t *seed = (url_entry_t *)malloc(sizeof(url_entry_t));
     strcpy(seed->url, seed_url);
@@ -126,10 +126,16 @@ int main(int argc, char **argv)
 	}
     fclose(f_result);
     curl_global_cleanup();
-	hdestroy();
-	free((void*)seed);
+    xmlCleanupParser();
+	hdestroy_r(&visited_urls);
+    hdestroy_r(&visited_pngs);
+    free(thread_status);
+    free(threads);
 	
-	while(STAILQ_FIRST(&url_frontier) != NULL){
+	while(STAILQ_FIRST(&url_frontier) != NULL)
+    {
+        url_entry_t *url_entry = STAILQ_FIRST(&url_frontier);
+        free(url_entry);
 		STAILQ_REMOVE_HEAD(&url_frontier, pointers);
 	}
 	

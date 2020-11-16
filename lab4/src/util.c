@@ -114,7 +114,6 @@ int find_http(char *buf, int size, int follow_relative_links, const char *base_u
         xmlXPathFreeObject (result);
     }
     xmlFreeDoc(doc);
-    //xmlCleanupParser();
     return 0;
 }
 /**
@@ -217,7 +216,6 @@ int recv_buf_cleanup(RECV_BUF *ptr)
 void cleanup(CURL *curl, RECV_BUF *ptr)
 {
         curl_easy_cleanup(curl);
-        curl_global_cleanup();
         recv_buf_cleanup(ptr);
 }
 /**

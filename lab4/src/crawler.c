@@ -38,8 +38,10 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf);
 
 void* t_crawler(void* param)
 {
+    CURL *curl_handle;
+    RECV_BUF recv_buf;
+    curl_handle = easy_handle_init(&recv_buf, "");
     url_entry_t *url_entry;
-    int finish_local;
     while(1)
     {    
         sem_wait(&sem_frontier);
@@ -55,20 +57,19 @@ void* t_crawler(void* param)
             {
                 sem_post(&sem_frontier);
                 pthread_mutex_unlock(&mutex);
-                pthread_exit(NULL);
+                break;
             }
             thread_working++;
         }
         pthread_mutex_unlock(&mutex);
 
-        CURL *curl_handle;
-        RECV_BUF recv_buf;
+        curl_easy_setopt(curl_handle, CURLOPT_URL, url_entry->url);
+        free(url_entry);
 
-        curl_handle = easy_handle_init(&recv_buf, url_entry->url);
         curl_easy_perform(curl_handle);
 
         /* process the download data */
-        process_data(curl_handle, &recv_buf); 
+        process_data(curl_handle, &recv_buf);
 
         pthread_mutex_lock(&mutex);
         {
@@ -78,18 +79,23 @@ void* t_crawler(void* param)
                 finished = 1;
                 sem_post(&sem_frontier);
             }
-
         }
         pthread_mutex_unlock(&mutex);
     }
+
+    cleanup(curl_handle, &recv_buf);
+    pthread_exit(NULL);
 }
 
 void add_url(char *url)
 {
+    int inserted = 0;
     ENTRY new_url;
     new_url.data = NULL;
     new_url.key = url;
     ENTRY *res;
+
+    url_entry_t *url_entry = (url_entry_t *)malloc(sizeof(url_entry_t));
     
     pthread_mutex_lock(&mutex);
     {
@@ -100,14 +106,19 @@ void add_url(char *url)
             new_url.key = url_buf[url_buf_tail++];
             hsearch_r(new_url, ENTER, &res, &visited_urls);
 
-            url_entry_t *url_entry = (url_entry_t *)malloc(sizeof(url_entry_t));
             strcpy(url_entry->url, url);
             STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
+            inserted = 1;
             pthread_cond_signal(&cond_frontier);
             sem_post(&sem_frontier);
         }
     }
     pthread_mutex_unlock(&mutex);
+
+    if(!inserted)
+    {
+        free(url_entry);
+    }
 
 }
 
@@ -186,7 +197,6 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
             if(f_log != NULL)
             {
                 fprintf(f_log, "%s\n", url);
-                printf("%d: %lu: %s\n", STAILQ_EMPTY(&url_frontier), pthread_self(), url);
             }  
         }
         pthread_mutex_unlock(&mutex);
