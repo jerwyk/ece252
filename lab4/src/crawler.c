@@ -9,6 +9,7 @@
 
 #define CT_PNG  "image/png"
 #define CT_HTML "text/html"
+#define BUF_SIZE 1048576  /* 1024*1024 = 1M */
 
 typedef struct hsearch_data hashmap_t;
 
@@ -65,6 +66,8 @@ void* t_crawler(void* param)
         /* process the download data */
         process_data(curl_handle, &recv_buf);
         free(url_entry);
+        recv_buf_cleanup(&recv_buf);
+        recv_buf_init(&recv_buf, BUF_SIZE);
 
         pthread_mutex_lock(&mutex);
         {
