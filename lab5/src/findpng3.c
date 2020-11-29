@@ -184,6 +184,8 @@ int main(int argc, char **argv)
 	curl_multi_cleanup(multi_handle);
 	curl_global_cleanup();
 	
+	free(seed);
+	
 	while(!STAILQ_EMPTY(&url_frontier))
     {
         url_entry_t *url_entry = STAILQ_FIRST(&url_frontier);
