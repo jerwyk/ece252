@@ -5,9 +5,7 @@
 #include <stdlib.h>
 #include <curl/curl.h>
 #include <curl/multi.h>
-#include <pthread.h>
 #include <search.h>
-#include <semaphore.h>
 #include <sys/time.h>
 #include "util.h"
 #include "crawler.h"
@@ -25,13 +23,11 @@ struct hsearch_data visited_pngs;
 struct url_queue_t url_frontier;
 
 int image_num;
-int thread_working = 0;
+int handle_working = 0;
 int connection_num;
 FILE *f_log = NULL;
 FILE *f_result = NULL;
 
-pthread_mutex_t mutex;
-sem_t sem_frontier;
 int finished = 0;
 
 int main(int argc, char **argv)
@@ -92,11 +88,15 @@ int main(int argc, char **argv)
     STAILQ_INIT(&url_frontier);
     STAILQ_INSERT_TAIL(&url_frontier, seed, pointers);
 	
-	pthread_mutex_init(&mutex, NULL);
-	sem_init(&sem_frontier, 0, 1);
-	
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 	multi_handle = curl_multi_init();
+
+	for(int i = 0; i < connection_num; ++i){
+		CURL* easy_handle = curl_easy_init();
+		curl_easy_setopt(easy_handle, CURLOPT_WRITEFUNCTION, t_crawler);
+		curl_multi_add_handle(multi_handle, easy_handle);
+		/* remember to curl_easy_cleanup when done */
+	}
 
     /* clean up */
 	if(f_log != NULL){
@@ -106,8 +106,6 @@ int main(int argc, char **argv)
     xmlCleanupParser();
 	hdestroy_r(&visited_urls);
     hdestroy_r(&visited_pngs);
-    free(thread_status);
-    free(threads);
 	curl_multi_cleanup(multi_handle);
 	curl_global_cleanup();
 	
@@ -117,9 +115,6 @@ int main(int argc, char **argv)
 		STAILQ_REMOVE_HEAD(&url_frontier, pointers);
         free(url_entry);
 	}
-	
-	pthread_mutex_destroy(&mutex);
-	sem_destroy(&sem_frontier);
 
     gettimeofday(&t2, NULL);
     double t1_sec, t2_sec;

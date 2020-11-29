@@ -4,8 +4,6 @@
 #include "util.h"
 #include "png.h"
 #include <search.h>
-#include <pthread.h>
-#include <semaphore.h>
 
 #define CT_PNG  "image/png"
 #define CT_HTML "text/html"
@@ -14,8 +12,8 @@
 typedef struct hsearch_data hashmap_t;
 
 extern int image_num;
-extern int thread_num;
-extern int thread_working;
+extern int connection_num;
+extern int handle_working;
 extern FILE *f_log;
 extern FILE *f_result;
 
@@ -24,9 +22,6 @@ extern int url_buf_tail;
 extern struct url_queue_t url_frontier;
 extern struct hsearch_data visited_urls;
 extern struct hsearch_data visited_pngs;
-
-extern pthread_mutex_t mutex;
-extern sem_t sem_frontier;
 
 extern int finished;
 
@@ -42,8 +37,6 @@ void* t_crawler(void* param)
     url_entry_t *url_entry;
     while(1)
     {    
-        sem_wait(&sem_frontier);
-        pthread_mutex_lock(&mutex);
         {
             if(!finished)
             {
@@ -52,13 +45,10 @@ void* t_crawler(void* param)
             }
             else
             {
-                sem_post(&sem_frontier);
-                pthread_mutex_unlock(&mutex);
                 break;
             }
-            thread_working++;
+            handle_working++;
         }
-        pthread_mutex_unlock(&mutex);
 
         curl_easy_setopt(curl_handle, CURLOPT_URL, url_entry->url);
         curl_easy_perform(curl_handle);
@@ -69,20 +59,16 @@ void* t_crawler(void* param)
         recv_buf_cleanup(&recv_buf);
         recv_buf_init(&recv_buf, BUF_SIZE);
 
-        pthread_mutex_lock(&mutex);
         {
-            thread_working--;
-            if((STAILQ_EMPTY(&url_frontier) || image_num == 0) && thread_working == 0)
+            handle_working--;
+            if((STAILQ_EMPTY(&url_frontier) || image_num == 0) && handle_working == 0)
             {
                 finished = 1;
-                sem_post(&sem_frontier);
             }
         }
-        pthread_mutex_unlock(&mutex);
     }
 
     cleanup(curl_handle, &recv_buf);
-    pthread_exit(NULL);
 }
 
 void add_url(char *url)
@@ -95,7 +81,6 @@ void add_url(char *url)
 
     url_entry_t *url_entry = (url_entry_t *)malloc(sizeof(url_entry_t));
     
-    pthread_mutex_lock(&mutex);
     {
         hsearch_r(new_url, FIND, &res, &visited_urls);
         if(res == NULL)
@@ -107,10 +92,8 @@ void add_url(char *url)
             strcpy(url_entry->url, url);
             STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
             inserted = 1;
-            sem_post(&sem_frontier);
         }
     }
-    pthread_mutex_unlock(&mutex);
 
     if(!inserted)
     {
@@ -141,7 +124,6 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
     new_url.key = url;
     ENTRY *res;
     
-    pthread_mutex_lock(&mutex);
     {
         hsearch_r(new_url, FIND, &res, &visited_pngs);
         if(res == NULL)
@@ -151,7 +133,6 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
             if(image_num == 0)
             {
                 finished = 1;
-                sem_post(&sem_frontier);
             }
             else if(png)
             {
@@ -162,7 +143,6 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
             hsearch_r(new_url, ENTER, &res, &visited_pngs);
         }
     }
-    pthread_mutex_unlock(&mutex);
 
     return 0;
 }
@@ -182,14 +162,12 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 
     char *url = NULL;
     curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
-    pthread_mutex_lock(&mutex);
     {
         if(f_log != NULL)
         {
             fprintf(f_log, "%s\n", url);
         }  
     }
-    pthread_mutex_unlock(&mutex);
 
     if ( response_code >= 400 ) 
     { 
