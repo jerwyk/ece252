@@ -128,7 +128,7 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
     char *url = NULL;
     curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
 
-    if(p_recv_buf == NULL)
+    if(url[0] == (char)0)
     {
         return 0;
     }

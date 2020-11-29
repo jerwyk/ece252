@@ -139,7 +139,7 @@ int main(int argc, char **argv)
 
                 process_data(eh, buf);
                 recv_buf_cleanup(buf);
-                //free(buf);
+                free(buf);
 
                 if(!STAILQ_EMPTY(&url_frontier))
                 {
@@ -161,7 +161,7 @@ int main(int argc, char **argv)
                     else
                     {
                         curl_multi_remove_handle( multi_handle, eh );
-                        curl_easy_setopt(eh, CURLOPT_URL, "");
+                        eh = easy_handle_init("");
                         curl_multi_add_handle(multi_handle, eh);
                     }            
                 }         
