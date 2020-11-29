@@ -95,22 +95,18 @@ void add_url(char *url)
 
     url_entry_t *url_entry = (url_entry_t *)malloc(sizeof(url_entry_t));
     
-    pthread_mutex_lock(&mutex);
+    hsearch_r(new_url, FIND, &res, &visited_urls);
+    if(res == NULL)
     {
-        hsearch_r(new_url, FIND, &res, &visited_urls);
-        if(res == NULL)
-        {
-            strcpy(url_buf[url_buf_tail], url);
-            new_url.key = url_buf[url_buf_tail++];
-            hsearch_r(new_url, ENTER, &res, &visited_urls);
+        strcpy(url_buf[url_buf_tail], url);
+        new_url.key = url_buf[url_buf_tail++];
+        hsearch_r(new_url, ENTER, &res, &visited_urls);
 
-            strcpy(url_entry->url, url);
-            STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
-            inserted = 1;
-            sem_post(&sem_frontier);
-        }
+        strcpy(url_entry->url, url);
+        STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
+        inserted = 1;
+        sem_post(&sem_frontier);
     }
-    pthread_mutex_unlock(&mutex);
 
     if(!inserted)
     {
@@ -141,28 +137,24 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
     new_url.key = url;
     ENTRY *res;
     
-    pthread_mutex_lock(&mutex);
+    hsearch_r(new_url, FIND, &res, &visited_pngs);
+    if(res == NULL)
     {
-        hsearch_r(new_url, FIND, &res, &visited_pngs);
-        if(res == NULL)
+        strcpy(url_buf[url_buf_tail], url);
+        new_url.key = url_buf[url_buf_tail++];
+        if(image_num == 0)
         {
-            strcpy(url_buf[url_buf_tail], url);
-            new_url.key = url_buf[url_buf_tail++];
-            if(image_num == 0)
-            {
-                finished = 1;
-                sem_post(&sem_frontier);
-            }
-            else if(png)
-            {
-                image_num--;
-                fprintf(f_result, "%s\n", url);
-            }
-
-            hsearch_r(new_url, ENTER, &res, &visited_pngs);
+            finished = 1;
+            sem_post(&sem_frontier);
         }
+        else if(png)
+        {
+            image_num--;
+            fprintf(f_result, "%s\n", url);
+        }
+
+        hsearch_r(new_url, ENTER, &res, &visited_pngs);
     }
-    pthread_mutex_unlock(&mutex);
 
     return 0;
 }
@@ -182,14 +174,12 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 
     char *url = NULL;
     curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
-    pthread_mutex_lock(&mutex);
+
+    if(f_log != NULL)
     {
-        if(f_log != NULL)
-        {
-            fprintf(f_log, "%s\n", url);
-        }  
-    }
-    pthread_mutex_unlock(&mutex);
+        fprintf(f_log, "%s\n", url);
+    }  
+
 
     if ( response_code >= 400 ) 
     { 

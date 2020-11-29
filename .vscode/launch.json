@@ -42,6 +42,32 @@
                 }
             ],
             "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+            "name": "gcc-9 - Debug lab4",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/jerwyk/Desktop/Stuff/ece252/lab4/src/findpng2",
+            "args": [
+                "-m",
+                "5",
+                "-t",
+                "1",
+                "http://ece252-1.uwaterloo.ca/lab4/"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "miDebuggerPath": "/usr/bin/gdb"
         }
     ]
 }
