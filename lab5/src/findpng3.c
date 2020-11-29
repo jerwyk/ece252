@@ -5,9 +5,7 @@
 #include <stdlib.h>
 #include <curl/curl.h>
 #include <curl/multi.h>
-#include <pthread.h>
 #include <search.h>
-#include <semaphore.h>
 #include <sys/time.h>
 #include "util.h"
 #include "crawler.h"
@@ -15,6 +13,7 @@
 
 #define ECE252_HEADER "X-Ece252-Fragment: "
 #define URL_BUF_SIZE 2048
+#define MAX_WAIT_MSECS 30 * 1000
 
 char* url_check_1 = "http://";
 char* url_check_2 = "https://";
@@ -25,13 +24,11 @@ struct hsearch_data visited_pngs;
 struct url_queue_t url_frontier;
 
 int image_num;
-int thread_working = 0;
+int handle_working = 0;
 int connection_num;
 FILE *f_log = NULL;
 FILE *f_result = NULL;
 
-pthread_mutex_t mutex;
-sem_t sem_frontier;
 int finished = 0;
 
 int main(int argc, char **argv)
@@ -92,11 +89,75 @@ int main(int argc, char **argv)
     STAILQ_INIT(&url_frontier);
     STAILQ_INSERT_TAIL(&url_frontier, seed, pointers);
 	
-	pthread_mutex_init(&mutex, NULL);
-	sem_init(&sem_frontier, 0, 1);
-	
 	curl_global_init(CURL_GLOBAL_DEFAULT);
-	multi_handle = curl_multi_init();
+	CURLM* multi_handle = curl_multi_init();
+    CURLMsg *msg = NULL;
+    CURL *eh = NULL;
+    int msgs_left = 0;
+    CURLcode return_code = 0;
+    int http_status_code;
+
+	for(int i = 0; i < connection_num; ++i){
+		CURL* easy_handle = easy_handle_init(seed_url, crawler_cb);
+		curl_multi_add_handle(multi_handle, easy_handle);
+		/* remember to curl_easy_cleanup when done */
+	}
+
+    curl_multi_perform(multi_handle, &handle_working);
+
+    while(!finished)
+    {
+        int numfds = 0;
+        int res = curl_multi_wait(multi_handle, NULL, 0, MAX_WAIT_MSECS, &numfds);
+        if(res != CURLM_OK)
+        {
+            break; /*error happened */
+        }
+
+        while ( ( msg = curl_multi_info_read( multi_handle, &msgs_left ) ) ) 
+        {
+            if ( msg->msg == CURLMSG_DONE ) {
+                eh = msg->easy_handle;
+
+                return_code = msg->data.result;
+                if ( return_code != CURLE_OK ) {
+                    fprintf( stderr, "CURL error code: %d\n", msg->data.result );
+                    curl_multi_remove_handle( multi_handle, eh );
+                    curl_easy_cleanup( eh );
+                    continue;
+                }
+
+                // Get HTTP status code
+                http_status_code = 0;
+
+                curl_multi_remove_handle( multi_handle, eh );
+
+                if(handle_working != 0)
+                {
+                    while(STAILQ_EMPTY(&url_frontier))
+                    {
+                        url_entry_t *url_entry = STAILQ_FIRST(&url_frontier);
+                        STAILQ_REMOVE_HEAD(&url_frontier, pointers);
+                        curl_easy_setopt(eh, CURLOPT_URL, url_entry->url);
+                        free(url_entry);
+                        curl_multi_add_handle(multi_handle, eh);
+                    }
+                }
+                else
+                {
+                    curl_easy_cleanup(eh);
+                }         
+
+
+            } else {
+                fprintf( stderr, "error: after curl_multi_info_read(), CURLMsg=%d\n", msg->msg );
+            }
+        }
+
+        curl_multi_perform(multi_handle, &handle_working);
+
+    }
+
 
     /* clean up */
 	if(f_log != NULL){
@@ -106,8 +167,6 @@ int main(int argc, char **argv)
     xmlCleanupParser();
 	hdestroy_r(&visited_urls);
     hdestroy_r(&visited_pngs);
-    free(thread_status);
-    free(threads);
 	curl_multi_cleanup(multi_handle);
 	curl_global_cleanup();
 	
@@ -117,9 +176,6 @@ int main(int argc, char **argv)
 		STAILQ_REMOVE_HEAD(&url_frontier, pointers);
         free(url_entry);
 	}
-	
-	pthread_mutex_destroy(&mutex);
-	sem_destroy(&sem_frontier);
 
     gettimeofday(&t2, NULL);
     double t1_sec, t2_sec;

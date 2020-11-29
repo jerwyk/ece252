@@ -15,9 +15,9 @@
 typedef struct recv_buf2 {
     char *buf;       /* memory to hold a copy of received data */
     size_t size;     /* size of valid data in buf in bytes*/
-    size_t max_size; /* max capacity of buf in bytes*/
     int seq;         /* >=0 sequence number extracted from http header */
                      /* <0 indicates an invalid seq number */
+    CURL* handle;
 } RECV_BUF;
 
 typedef struct _url_entry
@@ -31,10 +31,6 @@ STAILQ_HEAD(url_queue_t, _url_entry);
 htmlDocPtr mem_getdoc(char *buf, int size, const char *url);
 xmlXPathObjectPtr getnodeset (xmlDocPtr doc, xmlChar *xpath);
 int find_http(char *fname, int size, int follow_relative_links, const char *base_url, void callback(char *));
-size_t header_cb_curl(char *p_recv, size_t size, size_t nmemb, void *userdata);
-size_t write_cb_curl3(char *p_recv, size_t size, size_t nmemb, void *p_userdata);
-int recv_buf_init(RECV_BUF *ptr, size_t max_size);
-int recv_buf_cleanup(RECV_BUF *ptr);
 void cleanup(CURL *curl, RECV_BUF *ptr);
 int write_file(const char *path, const void *in, size_t len);
-CURL *easy_handle_init(RECV_BUF *ptr, const char *url);
+CURL *easy_handle_init(const char *url, size_t cb(char*, size_t, size_t, void*));
