@@ -116,10 +116,107 @@ int find_http(char *buf, int size, int follow_relative_links, const char *base_u
     xmlFreeDoc(doc);
     return 0;
 }
+/**
+ * @brief  cURL header call back function to extract image sequence number from 
+ *         http header data. An example header for image part n (assume n = 2) is:
+ *         X-Ece252-Fragment: 2
+ * @param  char *p_recv: header data delivered by cURL
+ * @param  size_t size size of each memb
+ * @param  size_t nmemb number of memb
+ * @param  void *userdata user defined data structurea
+ * @return size of header data received.
+ * @details this routine will be invoked multiple times by the libcurl until the full
+ * header data are received.  we are only interested in the ECE252_HEADER line 
+ * received so that we can extract the image sequence number from it. This
+ * explains the if block in the code.
+ */
+size_t header_cb_curl(char *p_recv, size_t size, size_t nmemb, void *userdata)
+{
+    int realsize = size * nmemb;
+    RECV_BUF *p = userdata;
+
+    if (realsize > strlen(ECE252_HEADER) &&
+	strncmp(p_recv, ECE252_HEADER, strlen(ECE252_HEADER)) == 0) {
+
+        /* extract img sequence number */
+	p->seq = atoi(p_recv + strlen(ECE252_HEADER));
+
+    }
+    return realsize;
+}
+
+
+/**
+ * @brief write callback function to save a copy of received data in RAM.
+ *        The received libcurl data are pointed by p_recv, 
+ *        which is provided by libcurl and is not user allocated memory.
+ *        The user allocated memory is at p_userdata. One needs to
+ *        cast it to the proper struct to make good use of it.
+ *        This function maybe invoked more than once by one invokation of
+ *        curl_easy_perform().
+ */
+
+size_t write_cb_curl3(char *p_recv, size_t size, size_t nmemb, void *p_userdata)
+{
+    size_t realsize = size * nmemb;
+    RECV_BUF *p = (RECV_BUF *)p_userdata;
+ 
+    if (p->size + realsize + 1 > p->max_size) {/* hope this rarely happens */ 
+        /* received data is not 0 terminated, add one byte for terminating 0 */
+        size_t new_size = p->max_size + max(BUF_INC, realsize + 1);   
+        char *q = realloc(p->buf, new_size);
+        if (q == NULL) {
+            perror("realloc"); /* out of memory */
+            return -1;
+        }
+        p->buf = q;
+        p->max_size = new_size;
+    }
+
+    memcpy(p->buf + p->size, p_recv, realsize); /*copy data from libcurl*/
+    p->size += realsize;
+    p->buf[p->size] = 0;
+
+    return realsize;
+}
+
+
+int recv_buf_init(RECV_BUF *ptr, size_t max_size)
+{
+    void *p = NULL;
+    
+    if (ptr == NULL) {
+        return 1;
+    }
+
+    p = malloc(max_size);
+    if (p == NULL) {
+	return 2;
+    }
+    
+    ptr->buf = p;
+    ptr->size = 0;
+    ptr->max_size = max_size;
+    ptr->seq = -1;              /* valid seq should be positive */
+    return 0;
+}
+
+int recv_buf_cleanup(RECV_BUF *ptr)
+{
+    if (ptr == NULL) {
+	return 1;
+    }
+    
+    free(ptr->buf);
+    ptr->size = 0;
+    ptr->max_size = 0;
+    return 0;
+}
 
 void cleanup(CURL *curl, RECV_BUF *ptr)
 {
         curl_easy_cleanup(curl);
+        recv_buf_cleanup(ptr);
 }
 /**
  * @brief output data in memory to a file
@@ -163,14 +260,15 @@ int write_file(const char *path, const void *in, size_t len)
  * Note: the caller is responsbile for cleaning the returned curl handle
  */
 
-CURL *easy_handle_init(const char *url, size_t cb(char*, size_t, size_t, void*))
+CURL *easy_handle_init(const char *url)
 {
     CURL *curl_handle = NULL;
+    RECV_BUF *ptr = malloc(sizeof(RECV_BUF));
 
-    if (url == NULL) {
+    /* init user defined call back function buffer */
+    if ( recv_buf_init(ptr, BUF_SIZE) != 0 ) {
         return NULL;
     }
-
     /* init a curl session */
     curl_handle = curl_easy_init();
 
@@ -183,9 +281,15 @@ CURL *easy_handle_init(const char *url, size_t cb(char*, size_t, size_t, void*))
     curl_easy_setopt(curl_handle, CURLOPT_URL, url);
 
     /* register write call back function to process received data */
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, cb); 
+    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write_cb_curl3); 
     /* user defined data structure passed to the call back function */
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)curl_handle);
+    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)ptr);
+    curl_easy_setopt(curl_handle, CURLOPT_PRIVATE, ptr);
+
+    /* register header call back function to process received header data */
+    curl_easy_setopt(curl_handle, CURLOPT_HEADERFUNCTION, header_cb_curl); 
+    /* user defined data structure passed to the call back function */
+    curl_easy_setopt(curl_handle, CURLOPT_HEADERDATA, (void *)ptr);
 
     /* some servers requires a user-agent field */
     curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "ece252 lab4 crawler");

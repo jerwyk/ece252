@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 
 #include "crawler.h"
-#include "util.h"
 #include "png.h"
 #include <search.h>
 
@@ -31,11 +30,14 @@ size_t crawler_cb(char *p_recv, size_t size, size_t nmemb, void *p_userdata)
 {
     RECV_BUF p;
     CURL *h = (CURL *)p_userdata;
-    p.size = size * nmemb;
     p.buf = p_recv;
+    p.size = size * nmemb;
     process_data(h, &p);
 
-    return p.size;
+    char *url = NULL;
+    curl_easy_getinfo(h, CURLINFO_EFFECTIVE_URL, &url);
+
+    return size * nmemb;
 }
 
 void add_url(char *url)
@@ -96,19 +98,12 @@ int process_png(CURL *curl_handle, RECV_BUF *p_recv_buf)
         new_url.key = url_buf[url_buf_tail++];
         if(image_num == 0)
         {
-            strcpy(url_buf[url_buf_tail], url);
-            new_url.key = url_buf[url_buf_tail++];
-            if(image_num == 0)
-            {
-                finished = 1;
-            }
-            else if(png)
-            {
-                image_num--;
-                fprintf(f_result, "%s\n", url);
-            }
-
-            hsearch_r(new_url, ENTER, &res, &visited_pngs);
+            finished = 1;
+        }
+        else if(png)
+        {
+            image_num--;
+            fprintf(f_result, "%s\n", url);
         }
 
         hsearch_r(new_url, ENTER, &res, &visited_pngs);
@@ -132,12 +127,15 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 
     char *url = NULL;
     curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
-    printf("%s\n", url);
+
+    if(p_recv_buf == NULL)
     {
-        if(f_log != NULL)
-        {
-            fprintf(f_log, "%s\n", url);
-        }  
+        return 0;
+    }
+
+    if(f_log != NULL)
+    {
+        fprintf(f_log, "%s\n", url);
     }
 
     if ( response_code >= 400 ) 

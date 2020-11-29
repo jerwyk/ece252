@@ -86,25 +86,31 @@ int main(int argc, char **argv)
     hcreate_r(image_num, &visited_pngs);
 
     STAILQ_INIT(&url_frontier);
-    STAILQ_INSERT_TAIL(&url_frontier, seed, pointers);
 	
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 	CURLM* multi_handle = curl_multi_init();
     CURLMsg *msg = NULL;
     CURL *eh = NULL;
     int msgs_left = 0;
-    CURLcode return_code = 0;
     int handle_working = 0;
     int handle_finished = 0;
 
-    CURL* easy_handle = easy_handle_init(seed_url, crawler_cb);
+    CURL* easy_handle = easy_handle_init(seed_url);
     curl_multi_add_handle(multi_handle, easy_handle);
 
-	for(int i = 0; i < connection_num; ++i){
-		CURL* easy_handle = easy_handle_init("", crawler_cb);
+	for(int i = 0; i < connection_num - 1; ++i){
+		CURL* easy_handle = easy_handle_init("");
 		curl_multi_add_handle(multi_handle, easy_handle);
 		/* remember to curl_easy_cleanup when done */
 	}
+
+    ENTRY new_url;
+    ENTRY *res;
+    new_url.data = NULL;
+    new_url.key = seed_url;
+    strcpy(url_buf[url_buf_tail], seed_url);
+    new_url.key = url_buf[url_buf_tail++];
+    hsearch_r(new_url, ENTER, &res, &visited_urls);
 
     curl_multi_perform(multi_handle, &handle_working);
 
@@ -128,18 +134,19 @@ int main(int argc, char **argv)
             if ( msg->msg == CURLMSG_DONE ) {
                 eh = msg->easy_handle;
 
-                return_code = msg->data.result;
-                if ( return_code != CURLE_OK ) {
-                    //fprintf( stderr, "CURL error code: %d\n", msg->data.result );
-                }
+                RECV_BUF *buf;
+                curl_easy_getinfo(eh, CURLINFO_PRIVATE, &buf);
 
-                curl_multi_remove_handle( multi_handle, eh );
+                process_data(eh, buf);
+                recv_buf_cleanup(buf);
+                //free(buf);
 
                 if(!STAILQ_EMPTY(&url_frontier))
                 {
+                    curl_multi_remove_handle( multi_handle, eh );
                     url_entry_t *url_entry = STAILQ_FIRST(&url_frontier);
-                    STAILQ_REMOVE_HEAD(&url_frontier, pointers);
-                    curl_easy_setopt(eh, CURLOPT_URL, url_entry->url);
+                    STAILQ_REMOVE_HEAD(&url_frontier, pointers);    
+                    eh = easy_handle_init(url_entry->url);
                     free(url_entry);
                     curl_multi_add_handle(multi_handle, eh);
                 }
@@ -153,6 +160,7 @@ int main(int argc, char **argv)
                     }
                     else
                     {
+                        curl_multi_remove_handle( multi_handle, eh );
                         curl_easy_setopt(eh, CURLOPT_URL, "");
                         curl_multi_add_handle(multi_handle, eh);
                     }            
