@@ -48,18 +48,16 @@ void add_url(char *url)
 
     url_entry_t *url_entry = (url_entry_t *)malloc(sizeof(url_entry_t));
     
+    hsearch_r(new_url, FIND, &res, &visited_urls);
+    if(res == NULL)
     {
-        hsearch_r(new_url, FIND, &res, &visited_urls);
-        if(res == NULL)
-        {
-            strcpy(url_buf[url_buf_tail], url);
-            new_url.key = url_buf[url_buf_tail++];
-            hsearch_r(new_url, ENTER, &res, &visited_urls);
+        strcpy(url_buf[url_buf_tail], url);
+        new_url.key = url_buf[url_buf_tail++];
+        hsearch_r(new_url, ENTER, &res, &visited_urls);
 
-            strcpy(url_entry->url, url);
-            STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
-            inserted = 1;
-        }
+        strcpy(url_entry->url, url);
+        STAILQ_INSERT_TAIL(&url_frontier, url_entry, pointers);
+        inserted = 1;
     }
 
     if(!inserted)
@@ -134,6 +132,7 @@ int process_data(CURL *curl_handle, RECV_BUF *p_recv_buf)
 
     char *url = NULL;
     curl_easy_getinfo(curl_handle, CURLINFO_EFFECTIVE_URL, &url);
+    printf("%s\n", url);
     {
         if(f_log != NULL)
         {

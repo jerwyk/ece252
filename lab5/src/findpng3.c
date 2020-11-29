@@ -24,7 +24,6 @@ struct hsearch_data visited_pngs;
 struct url_queue_t url_frontier;
 
 int image_num;
-int handle_working = 0;
 int connection_num;
 FILE *f_log = NULL;
 FILE *f_result = NULL;
@@ -95,10 +94,14 @@ int main(int argc, char **argv)
     CURL *eh = NULL;
     int msgs_left = 0;
     CURLcode return_code = 0;
-    int http_status_code;
+    int handle_working = 0;
+    int handle_finished = 0;
+
+    CURL* easy_handle = easy_handle_init(seed_url, crawler_cb);
+    curl_multi_add_handle(multi_handle, easy_handle);
 
 	for(int i = 0; i < connection_num; ++i){
-		CURL* easy_handle = easy_handle_init(seed_url, crawler_cb);
+		CURL* easy_handle = easy_handle_init("", crawler_cb);
 		curl_multi_add_handle(multi_handle, easy_handle);
 		/* remember to curl_easy_cleanup when done */
 	}
@@ -107,12 +110,18 @@ int main(int argc, char **argv)
 
     while(!finished)
     {
-        int numfds = 0;
-        int res = curl_multi_wait(multi_handle, NULL, 0, MAX_WAIT_MSECS, &numfds);
-        if(res != CURLM_OK)
-        {
-            break; /*error happened */
-        }
+        do {
+            int numfds=0;
+            int res = curl_multi_wait(multi_handle, NULL, 0, MAX_WAIT_MSECS, &numfds);
+            if(res != CURLM_OK) {
+                fprintf(stderr, "error: curl_multi_wait() returned %d\n", res);
+                return EXIT_FAILURE;
+            }
+            curl_multi_perform(multi_handle, &handle_working);
+
+        } while(handle_working);
+
+        handle_finished = 0;
 
         while ( ( msg = curl_multi_info_read( multi_handle, &msgs_left ) ) ) 
         {
@@ -121,41 +130,38 @@ int main(int argc, char **argv)
 
                 return_code = msg->data.result;
                 if ( return_code != CURLE_OK ) {
-                    fprintf( stderr, "CURL error code: %d\n", msg->data.result );
-                    curl_multi_remove_handle( multi_handle, eh );
-                    curl_easy_cleanup( eh );
-                    continue;
+                    //fprintf( stderr, "CURL error code: %d\n", msg->data.result );
                 }
-
-                // Get HTTP status code
-                http_status_code = 0;
 
                 curl_multi_remove_handle( multi_handle, eh );
 
-                if(handle_working != 0)
+                if(!STAILQ_EMPTY(&url_frontier))
                 {
-                    while(STAILQ_EMPTY(&url_frontier))
-                    {
-                        url_entry_t *url_entry = STAILQ_FIRST(&url_frontier);
-                        STAILQ_REMOVE_HEAD(&url_frontier, pointers);
-                        curl_easy_setopt(eh, CURLOPT_URL, url_entry->url);
-                        free(url_entry);
-                        curl_multi_add_handle(multi_handle, eh);
-                    }
+                    url_entry_t *url_entry = STAILQ_FIRST(&url_frontier);
+                    STAILQ_REMOVE_HEAD(&url_frontier, pointers);
+                    curl_easy_setopt(eh, CURLOPT_URL, url_entry->url);
+                    free(url_entry);
+                    curl_multi_add_handle(multi_handle, eh);
                 }
                 else
                 {
-                    curl_easy_cleanup(eh);
+                    handle_finished++;
+                    if(handle_finished == connection_num)
+                    {
+                        finished = 1;
+                        curl_easy_cleanup(eh);
+                    }
+                    else
+                    {
+                        curl_easy_setopt(eh, CURLOPT_URL, "");
+                        curl_multi_add_handle(multi_handle, eh);
+                    }            
                 }         
-
 
             } else {
                 fprintf( stderr, "error: after curl_multi_info_read(), CURLMsg=%d\n", msg->msg );
             }
         }
-
-        curl_multi_perform(multi_handle, &handle_working);
-
     }
 
 
