@@ -136,7 +136,7 @@ int main(int argc, char **argv)
                 recv_buf_cleanup(buf);
                 free(buf);
 
-                while(!STAILQ_EMPTY(&url_frontier) && handle_working < connection_num)
+                while(!STAILQ_EMPTY(&url_frontier) && handle_working <= connection_num)
                 {
                     url_entry_t *url_entry = STAILQ_FIRST(&url_frontier);
                     STAILQ_REMOVE_HEAD(&url_frontier, pointers);    
