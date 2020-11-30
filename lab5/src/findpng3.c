@@ -139,7 +139,7 @@ int main(int argc, char **argv)
 
                 process_data(eh, buf);
                 recv_buf_cleanup(buf);
-                //free(buf);
+                free(buf);
 
                 if(!STAILQ_EMPTY(&url_frontier))
                 {
