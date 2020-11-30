@@ -92,17 +92,17 @@ int main(int argc, char **argv)
     CURLMsg *msg = NULL;
     CURL *eh = NULL;
     int msgs_left = 0;
-    int handle_working = 0;
-    int handle_finished = 0;
+    int handle_working = 1;
+    //int handle_finished = 0;
 
     CURL* easy_handle = easy_handle_init(seed_url);
     curl_multi_add_handle(multi_handle, easy_handle);
 
-	for(int i = 0; i < connection_num - 1; ++i){
-		CURL* easy_handle = easy_handle_init("");
-		curl_multi_add_handle(multi_handle, easy_handle);
-		/* remember to curl_easy_cleanup when done */
-	}
+	// for(int i = 0; i < connection_num - 1; ++i){
+	// 	CURL* easy_handle = easy_handle_init("");
+	// 	curl_multi_add_handle(multi_handle, easy_handle);
+	// 	/* remember to curl_easy_cleanup when done */
+	// }
 
     ENTRY new_url;
     ENTRY *res;
@@ -114,20 +114,15 @@ int main(int argc, char **argv)
 
     curl_multi_perform(multi_handle, &handle_working);
 
-    while(!finished)
+    while(handle_working)
     {
-        do {
-            int numfds=0;
-            int res = curl_multi_wait(multi_handle, NULL, 0, MAX_WAIT_MSECS, &numfds);
-            if(res != CURLM_OK) {
-                fprintf(stderr, "error: curl_multi_wait() returned %d\n", res);
-                return EXIT_FAILURE;
-            }
-            curl_multi_perform(multi_handle, &handle_working);
-
-        } while(handle_working);
-
-        handle_finished = 0;
+        int numfds=0;
+        int res = curl_multi_wait(multi_handle, NULL, 0, MAX_WAIT_MSECS, &numfds);
+        if(res != CURLM_OK) {
+            fprintf(stderr, "error: curl_multi_wait() returned %d\n", res);
+            return EXIT_FAILURE;
+        }
+        curl_multi_perform(multi_handle, &handle_working);
 
         while ( ( msg = curl_multi_info_read( multi_handle, &msgs_left ) ) ) 
         {
@@ -141,30 +136,18 @@ int main(int argc, char **argv)
                 recv_buf_cleanup(buf);
                 free(buf);
 
-                if(!STAILQ_EMPTY(&url_frontier))
+                while(!STAILQ_EMPTY(&url_frontier) && handle_working < connection_num)
                 {
-                    curl_multi_remove_handle( multi_handle, eh );
                     url_entry_t *url_entry = STAILQ_FIRST(&url_frontier);
                     STAILQ_REMOVE_HEAD(&url_frontier, pointers);    
-                    eh = easy_handle_init(url_entry->url);
+                    CURL* new_h = easy_handle_init(url_entry->url);
                     free(url_entry);
-                    curl_multi_add_handle(multi_handle, eh);
-                }
-                else
-                {
-                    handle_finished++;
-                    if(handle_finished == connection_num)
-                    {
-                        finished = 1;
-                        curl_easy_cleanup(eh);
-                    }
-                    else
-                    {
-                        curl_multi_remove_handle( multi_handle, eh );
-                        eh = easy_handle_init("");
-                        curl_multi_add_handle(multi_handle, eh);
-                    }            
-                }         
+                    curl_multi_add_handle(multi_handle, new_h);
+                    handle_working++;
+                }      
+
+                curl_multi_remove_handle( multi_handle, eh );
+                curl_easy_cleanup(eh);
 
             } else {
                 fprintf( stderr, "error: after curl_multi_info_read(), CURLMsg=%d\n", msg->msg );
