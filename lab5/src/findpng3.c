@@ -114,7 +114,7 @@ int main(int argc, char **argv)
 
     curl_multi_perform(multi_handle, &handle_working);
 
-    while(handle_working)
+    while(handle_working && !finished)
     {
         int numfds=0;
         int res = curl_multi_wait(multi_handle, NULL, 0, MAX_WAIT_MSECS, &numfds);
